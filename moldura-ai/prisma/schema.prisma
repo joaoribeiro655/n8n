@@ -1,0 +1,92 @@
+// Multi-tenant photo-frame platform schema.
+// Each Tenant = a car dealership ("concessionária") with its own visual identity.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+
+  // Visual identity / branding
+  primaryColor   String  @default("#0ea5e9")
+  secondaryColor String  @default("#0b1220")
+  accentColor    String  @default("#f59e0b")
+  textColor      String  @default("#ffffff")
+  fontFamily     String  @default("Inter")
+  logoUrl        String?
+
+  // Contact info shown on the marketing frames
+  phone   String?
+  website String?
+  address String?
+  tagline String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  frames   Frame[]
+  artworks Artwork[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("OWNER") // OWNER | MEMBER
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  artworks Artwork[]
+
+  createdAt DateTime @default(now())
+}
+
+model Frame {
+  id       String  @id @default(cuid())
+  name     String
+  imageUrl String  // PNG overlay with a transparent "window" for the photo
+  width    Int     @default(1080)
+  height   Int     @default(1080)
+
+  // Optional slot rectangle (where the photo should sit), as fractions 0..1
+  slotX Float @default(0)
+  slotY Float @default(0)
+  slotW Float @default(1)
+  slotH Float @default(1)
+
+  source String @default("IMPORTED") // IMPORTED | GENERATED
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  artworks Artwork[]
+
+  createdAt DateTime @default(now())
+}
+
+model Artwork {
+  id       String @id @default(cuid())
+  imageUrl String
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  frameId String?
+  frame   Frame?  @relation(fields: [frameId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
