@@ -16,15 +16,20 @@ arrasta a foto do carro para gerar a arte final (Instagram / WhatsApp).
 
 ## Stack
 
-Next.js (App Router) · React · TypeScript · Tailwind CSS · Prisma · SQLite · JWT (cookie httpOnly).
+Next.js (App Router) · React · TypeScript · Tailwind CSS · Prisma · PostgreSQL · Vercel Blob · JWT (cookie httpOnly).
 
 ## Como rodar
+
+> Para colocar no ar (Vercel + domínio Hostinger) siga o **[DEPLOY.md](./DEPLOY.md)**
+> — guia passo a passo para iniciantes.
+
+Para rodar localmente (precisa de um PostgreSQL):
 
 ```bash
 cd moldura-ai
 npm install
-cp .env.example .env          # ajuste AUTH_SECRET em produção
-npm run db:push               # cria o banco SQLite
+cp .env.example .env          # ajuste DATABASE_URL/AUTH_SECRET
+npm run db:push               # cria as tabelas no Postgres
 npm run db:seed               # (opcional) cria conta demo
 npm run dev                   # http://localhost:3000
 ```
@@ -52,9 +57,13 @@ prisma/             # schema + seed
 public/uploads/     # arquivos enviados (logos, molduras, artes)
 ```
 
-## Notas de produção
+## Produção (Vercel)
 
-- O upload grava em `public/uploads` (filesystem local). Em deploy serverless
-  (ex.: Vercel) troque por um storage de objetos (S3, R2, etc.).
-- Para Postgres, troque o `datasource` no `schema.prisma` e a `DATABASE_URL`.
-- Defina um `AUTH_SECRET` forte em produção.
+- **Banco:** PostgreSQL (Vercel Postgres/Neon). A `DATABASE_URL` é preenchida
+  automaticamente ao conectar o storage no projeto.
+- **Imagens:** Vercel Blob. Quando `BLOB_READ_WRITE_TOKEN` existe, os uploads vão
+  para a nuvem; sem ele (dev), gravam em `public/uploads`.
+- **Sessão:** defina um `AUTH_SECRET` forte.
+- **Admin:** o e-mail em `SUPER_ADMIN_EMAIL` vira super-admin ao logar.
+
+Veja o **[DEPLOY.md](./DEPLOY.md)** para o passo a passo completo.

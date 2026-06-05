@@ -1,132 +1,114 @@
-# Deploy — colocar o Moldura.AI num subdomínio (ex.: `molduras.seudominio.com`)
+# 🚀 Guia para colocar a plataforma no ar (passo a passo para iniciantes)
 
-O app é um **servidor Next.js** (não é site estático/PHP), então ele precisa de um
-host que rode **Node.js**. O seu domínio na Hostinger entra como **DNS**: você cria
-um subdomínio e aponta para onde o app está rodando.
+Você **não precisa saber programar**. É só seguir os cliques abaixo na ordem.
+Vamos em 2 partes:
 
-Você tem dois caminhos. O **A** é o mais fácil. O **B** usa um VPS (mais controle).
+- **Parte 1** — deixar a plataforma funcionando num endereço grátis (`...vercel.app`)
+- **Parte 2** — ligar no seu domínio da Hostinger (`molduras.seudominio.com`)
+
+Tudo aqui é **gratuito** para começar.
 
 ---
 
-## Antes de tudo: variáveis de ambiente de produção
+## Parte 1 — Colocar no ar (Vercel)
 
-| Variável | Valor |
+### Passo 1 — Entrar na Vercel
+1. Acesse **https://vercel.com**
+2. Clique em **Sign Up** (ou **Log In**) e escolha **Continue with GitHub**
+   (use a mesma conta do GitHub onde está o código).
+3. Autorize o acesso quando ele pedir.
+
+### Passo 2 — Importar o projeto
+1. No painel da Vercel, clique em **Add New… → Project**.
+2. Encontre o repositório **`n8n`** (joaoribeiro655/n8n) e clique em **Import**.
+3. Vai aparecer uma tela de configuração. Ache o campo **Root Directory**,
+   clique em **Edit** e selecione/escreva: **`moldura-ai`**  ← (muito importante!)
+4. **Ainda NÃO clique em Deploy.** Antes vamos ligar o banco de dados e o
+   guardador de imagens (próximos passos).
+
+### Passo 3 — Criar o banco de dados (gratuito)
+1. Na mesma tela do projeto (ou no menu **Storage** depois de criado), clique
+   em **Storage → Create Database**.
+2. Escolha **Postgres** (Neon). Dê um nome qualquer (ex.: `molduras-db`) e
+   confirme. Pode escolher a região mais perto do Brasil (ex.: `São Paulo`).
+3. Quando criar, clique em **Connect** e ligue ao seu projeto.
+   > Isso preenche **sozinho** a variável `DATABASE_URL`. Você não copia nada. ✅
+
+### Passo 4 — Criar o guardador de imagens (gratuito)
+1. Ainda em **Storage → Create Database**, escolha **Blob**.
+2. Dê um nome (ex.: `molduras-fotos`) e confirme. Ligue ao projeto.
+   > Isso preenche **sozinho** a variável `BLOB_READ_WRITE_TOKEN`. ✅
+
+### Passo 5 — Colocar 2 senhas/configurações
+Vá em **Settings → Environment Variables** do projeto e adicione duas:
+
+| Name (nome) | Value (valor) |
 |---|---|
-| `AUTH_SECRET` | um segredo longo e aleatório. Gere com: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `SUPER_ADMIN_EMAIL` | **seu** e-mail. Ao fazer login com ele, você vira **super-admin** automaticamente e aparece a aba ★ Admin. |
-| `DATABASE_URL` | `file:/app/data/prod.db` (Docker) ou o que o host pedir |
+| `AUTH_SECRET` | um texto longo e aleatório. Pode inventar uns 40 caracteres misturando letras e números, ex.: `mEu-Segredo-Sup3r-Long0-9f8a7b6c5d4e3f2g1h` |
+| `SUPER_ADMIN_EMAIL` | **seu e-mail** (o que você vai usar pra logar como dono da plataforma) |
 
-> Para virar admin: crie sua conta normal em `/register`, depois faça login com o
-> e-mail que está em `SUPER_ADMIN_EMAIL`. (Ou rode `npm run admin:promote -- seu@email.com`.)
+Clique em **Save** em cada uma.
 
----
+### Passo 6 — Publicar
+1. Clique em **Deploy** (ou **Redeploy** se já tiver criado).
+2. Espere 1–3 minutinhos. Quando aparecer **🎉 Congratulations**, clique em
+   **Visit** / **Continue to Dashboard** para ver o endereço, algo como
+   `https://moldura-ai.vercel.app`.
 
-## Caminho A — Railway ou Render (recomendado, ~10 min)
+### Passo 7 — Criar sua conta de dono
+1. Abra o endereço e clique em **Criar conta**.
+2. Cadastre usando **o mesmo e-mail** que você colocou em `SUPER_ADMIN_EMAIL`.
+3. **Saia e entre de novo** (login). Pronto: vai aparecer o botão
+   **★ Admin da plataforma** no menu — é a sua área de dono, onde você cria e
+   gerencia todas as concessionárias. 🎉
 
-São hosts que rodam Node com **disco persistente** (mantêm o banco SQLite e os
-uploads). Mantemos o código como está.
-
-### 1. Subir o código
-- Já está no GitHub (branch `claude/multi-tenant-photo-frames-EmpaS`).
-
-### 2. Criar o serviço
-- **Railway**: New Project → Deploy from GitHub → selecione o repo → em *Root
-  Directory* coloque `moldura-ai`. Railway detecta o Dockerfile.
-- **Render**: New → Web Service → conecte o repo → *Root Directory* `moldura-ai`
-  → Runtime **Docker**.
-
-### 3. Variáveis de ambiente
-Adicione `AUTH_SECRET`, `SUPER_ADMIN_EMAIL` e `DATABASE_URL=file:/app/data/prod.db`.
-
-### 4. Volume persistente (importante!)
-Crie um **Volume** montado em `/app/data` (banco) e outro em
-`/app/public/uploads` (imagens). Sem isso, os dados somem a cada deploy.
-
-### 5. Domínio
-- O host te dá uma URL tipo `moldura-ai-production.up.railway.app`.
-- Em *Settings → Domains*, adicione `molduras.seudominio.com`. O host mostra um
-  destino **CNAME**.
-
-### 6. DNS na Hostinger
-- Painel Hostinger → **Domínios → DNS / Nameservers → Gerenciar registros DNS**.
-- Adicione um registro:
-  - **Tipo:** CNAME
-  - **Nome:** `molduras`
-  - **Aponta para:** o destino que o Railway/Render mostrou (ex.: `...up.railway.app`)
-  - **TTL:** padrão
-- Aguarde a propagação (minutos a algumas horas). HTTPS é automático nesses hosts.
-
-Pronto: `https://molduras.seudominio.com` 🎉
+> A plataforma já está funcionando! Você pode testar tudo agora.
 
 ---
 
-## Caminho B — VPS da Hostinger (Docker + Nginx + HTTPS)
+## Parte 2 — Ligar no seu domínio da Hostinger
 
-Se você tem um **VPS** na Hostinger (ou Contabo/DigitalOcean), roda tudo nele.
+Quando estiver feliz com o resultado, conecte um subdomínio
+(ex.: `molduras.seudominio.com`).
 
-### 1. Apontar o subdomínio para o VPS
-Hostinger → DNS → novo registro:
-- **Tipo:** A · **Nome:** `molduras` · **Aponta para:** o **IP do VPS**
+### Passo 1 — Adicionar o domínio na Vercel
+1. No projeto, vá em **Settings → Domains**.
+2. Digite `molduras.seudominio.com` (troque pelo seu) e clique em **Add**.
+3. A Vercel vai mostrar uma instrução de DNS. Geralmente um registro **CNAME**
+   apontando para **`cname.vercel-dns.com`**. Deixe essa tela aberta.
 
-### 2. No servidor (Ubuntu)
-```bash
-# Instalar Docker
-curl -fsSL https://get.docker.com | sh
+### Passo 2 — Apontar na Hostinger
+1. Entre no **hPanel** da Hostinger.
+2. Vá em **Domínios → (seu domínio) → DNS / Nameservers → Gerenciar registros DNS**.
+3. Clique em **Adicionar registro** e preencha:
+   - **Tipo:** `CNAME`
+   - **Nome / Host:** `molduras`  *(só essa palavra, sem o resto)*
+   - **Aponta para / Destino / Valor:** `cname.vercel-dns.com`
+     *(use exatamente o que a Vercel mostrou)*
+   - **TTL:** deixe o padrão
+4. Salve.
 
-# Clonar o projeto
-git clone <URL_DO_SEU_REPO> && cd n8n/moldura-ai
+### Passo 3 — Esperar
+- Pode levar de alguns minutos até algumas horas pra "propagar".
+- Na Vercel, a bolinha do domínio fica **verde** quando estiver pronto.
+- O **HTTPS (cadeado)** é automático.
 
-# Criar o .env de produção
-cat > .env <<'EOF'
-AUTH_SECRET=COLOQUE_UM_SEGREDO_LONGO_AQUI
-SUPER_ADMIN_EMAIL=seu-email@dominio.com
-EOF
-
-# Subir
-docker compose up -d --build
-```
-O app fica em `http://IP_DO_VPS:3000`.
-
-### 3. Nginx + HTTPS (Let's Encrypt)
-```bash
-sudo apt install -y nginx certbot python3-certbot-nginx
-
-sudo tee /etc/nginx/sites-available/molduras <<'EOF'
-server {
-  server_name molduras.seudominio.com;
-  client_max_body_size 20M;
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-}
-EOF
-
-sudo ln -s /etc/nginx/sites-available/molduras /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d molduras.seudominio.com   # gera o HTTPS
-```
-
-Pronto: `https://molduras.seudominio.com` 🎉
-
-Atualizar depois: `git pull && docker compose up -d --build`
+Pronto: **https://molduras.seudominio.com** funcionando! 🎉🎉
 
 ---
 
-## Multi-tenant por subdomínio (opcional, fase 2)
+## Dúvidas comuns
 
-Hoje cada concessionária é um tenant **dentro do mesmo endereço** (login separa
-os dados). Se mais pra frente você quiser `loja1.molduras.seudominio.com` e
-`loja2.molduras.seudominio.com`, dá pra fazer com um *wildcard* DNS
-(`*.molduras`) + middleware lendo o subdomínio. Me avise que eu implemento.
+**Vai custar quanto?** Pra começar, R$ 0. Vercel, Postgres (Neon) e Blob têm
+plano gratuito generoso. Só paga se crescer bastante o uso.
 
----
+**Mexi no código, como atualizo o site?** Toda vez que o código for atualizado
+no GitHub (eu faço isso), a Vercel **republica sozinha**. Você não faz nada.
 
-## SQLite vs Postgres
+**Esqueci de ser admin / não apareceu o botão Admin.** Confirme que o e-mail da
+sua conta é **igual** ao `SUPER_ADMIN_EMAIL` nas variáveis, e faça **logout +
+login** de novo.
 
-O padrão é **SQLite** (1 arquivo, simples, ótimo pra começar e aguenta muitas
-lojas). Se um dia quiser Postgres (Neon, Supabase, etc.), troque no
-`prisma/schema.prisma` o `provider` para `postgresql` e ajuste a `DATABASE_URL`.
-Necessário se for pra **Vercel** (lá o disco é efêmero).
+**Deu erro no Deploy.** Quase sempre é o **Root Directory** que não está como
+`moldura-ai`, ou faltou ligar o **Postgres**. Me chame que eu te ajudo a ler a
+mensagem de erro.
