@@ -26,6 +26,13 @@ Tudo aqui é **gratuito** para começar.
 4. **Ainda NÃO clique em Deploy.** Antes vamos ligar o banco de dados e o
    guardador de imagens (próximos passos).
 
+> ⚠️ **Importante — a "versão" certa do código (branch):** o código novo está
+> num "ramo" chamado **`claude/multi-tenant-photo-frames-EmpaS`** (e não no
+> principal). Depois de importar, vá em **Settings → Git → Production Branch**,
+> selecione **`claude/multi-tenant-photo-frames-EmpaS`** e salve. Sem isso, a
+> Vercel não acha a plataforma. (Se na hora de importar já aparecer a opção de
+> escolher o branch, escolha esse.)
+
 ### Passo 3 — Criar o banco de dados (gratuito)
 1. Na mesma tela do projeto (ou no menu **Storage** depois de criado), clique
    em **Storage → Create Database**.
