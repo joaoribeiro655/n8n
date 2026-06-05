@@ -18,7 +18,11 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar tenantName={tenant.name} userEmail={session.email} />
+      <Sidebar
+        tenantName={tenant.name}
+        userEmail={session.email}
+        isSuperAdmin={session.isSuperAdmin}
+      />
       <main className="flex-1 overflow-auto">
         <div className="mx-auto max-w-6xl px-8 py-8">{children}</div>
       </main>

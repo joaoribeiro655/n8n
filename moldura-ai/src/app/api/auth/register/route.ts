@@ -57,6 +57,7 @@ export async function POST(req: Request) {
     tenantId: tenant.id,
     role: user.role,
     email: user.email,
+    isSuperAdmin: user.isSuperAdmin,
   });
 
   return NextResponse.json({ ok: true });

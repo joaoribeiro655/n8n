@@ -20,6 +20,7 @@ export type SessionPayload = {
   tenantId: string;
   role: string;
   email: string;
+  isSuperAdmin: boolean;
 };
 
 export async function hashPassword(plain: string): Promise<string> {
@@ -63,6 +64,7 @@ export async function getSession(): Promise<SessionPayload | null> {
       tenantId: String(payload.tenantId),
       role: String(payload.role),
       email: String(payload.email),
+      isSuperAdmin: Boolean(payload.isSuperAdmin),
     };
   } catch {
     return null;
@@ -73,6 +75,13 @@ export async function getSession(): Promise<SessionPayload | null> {
 export async function requireSession(): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) throw new Error("UNAUTHORIZED");
+  return session;
+}
+
+/** Returns the session only if the caller is a platform super-admin, else null. */
+export async function getSuperAdminSession(): Promise<SessionPayload | null> {
+  const session = await getSession();
+  if (!session || !session.isSuperAdmin) return null;
   return session;
 }
 

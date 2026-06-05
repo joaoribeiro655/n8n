@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # SQLite file lives on the persistent volume below
+      DATABASE_URL: "file:/app/data/prod.db"
+      AUTH_SECRET: "${AUTH_SECRET}"
+      SUPER_ADMIN_EMAIL: "${SUPER_ADMIN_EMAIL}"
+      NODE_ENV: "production"
+    volumes:
+      - moldura_data:/app/data
+      - moldura_uploads:/app/public/uploads
+
+volumes:
+  moldura_data:
+  moldura_uploads:

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   }
   const { email, password } = parsed.data;
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  let user = await prisma.user.findUnique({ where: { email } });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return NextResponse.json(
       { error: "E-mail ou senha incorretos" },
@@ -27,11 +27,21 @@ export async function POST(req: Request) {
     );
   }
 
+  // Bootstrap: the email in SUPER_ADMIN_EMAIL is auto-promoted to platform admin.
+  const superEmail = process.env.SUPER_ADMIN_EMAIL?.toLowerCase();
+  if (superEmail && user.email.toLowerCase() === superEmail && !user.isSuperAdmin) {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { isSuperAdmin: true },
+    });
+  }
+
   await createSession({
     userId: user.id,
     tenantId: user.tenantId,
     role: user.role,
     email: user.email,
+    isSuperAdmin: user.isSuperAdmin,
   });
 
   return NextResponse.json({ ok: true });

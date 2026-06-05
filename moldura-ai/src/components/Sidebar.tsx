@@ -15,9 +15,11 @@ const NAV = [
 export default function Sidebar({
   tenantName,
   userEmail,
+  isSuperAdmin,
 }: {
   tenantName: string;
   userEmail: string;
+  isSuperAdmin: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -62,6 +64,16 @@ export default function Sidebar({
           );
         })}
       </nav>
+
+      {isSuperAdmin && (
+        <Link
+          href="/admin"
+          className="mt-2 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-300 transition hover:bg-amber-500/20"
+        >
+          <span className="w-4 text-center">★</span>
+          Admin da plataforma
+        </Link>
+      )}
 
       <button onClick={logout} className="btn-ghost mt-4 w-full justify-start">
         ⇥ Sair
