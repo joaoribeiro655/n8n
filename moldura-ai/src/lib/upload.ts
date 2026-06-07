@@ -6,12 +6,19 @@ import { put } from "@vercel/blob";
 
 const UPLOAD_ROOT = path.join(process.cwd(), "public", "uploads");
 
-const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
+const ALLOWED = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+  "text/html",
+]);
 const EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
   "image/svg+xml": "svg",
+  "text/html": "html",
 };
 
 /**

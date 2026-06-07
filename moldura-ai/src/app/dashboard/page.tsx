@@ -6,8 +6,9 @@ export default async function DashboardHome() {
   const session = await getSession();
   if (!session) return null;
 
-  const [tenant, frameCount, artworkCount, userCount] = await Promise.all([
+  const [tenant, studioCount, frameCount, artworkCount, userCount] = await Promise.all([
     prisma.tenant.findUnique({ where: { id: session.tenantId } }),
+    prisma.studio.count({ where: { tenantId: session.tenantId } }),
     prisma.frame.count({ where: { tenantId: session.tenantId } }),
     prisma.artwork.count({ where: { tenantId: session.tenantId } }),
     prisma.user.count({ where: { tenantId: session.tenantId } }),
@@ -17,6 +18,7 @@ export default async function DashboardHome() {
   const brandingDone = Boolean(tenant.logoUrl && tenant.phone);
 
   const stats = [
+    { label: "Estúdios (HTML)", value: studioCount, href: "/dashboard/studios" },
     { label: "Molduras", value: frameCount, href: "/dashboard/frames" },
     { label: "Artes geradas", value: artworkCount, href: "/dashboard/gallery" },
     { label: "Usuários", value: userCount, href: "/dashboard/team" },
@@ -49,8 +51,14 @@ export default async function DashboardHome() {
       )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <Link href="/dashboard/studios" className="card group transition hover:border-sky-500/40">
+          <h3 className="text-lg font-semibold text-white group-hover:text-sky-300">🎨 Estúdios (HTML)</h3>
+          <p className="mt-2 text-sm text-gray-400">
+            Importe os estúdios que você criou no Claude Design e use-os aqui.
+          </p>
+        </Link>
         <Link href="/dashboard/studio" className="card group transition hover:border-sky-500/40">
-          <h3 className="text-lg font-semibold text-white group-hover:text-sky-300">✦ Abrir o Estúdio</h3>
+          <h3 className="text-lg font-semibold text-white group-hover:text-sky-300">✦ Editor de molduras</h3>
           <p className="mt-2 text-sm text-gray-400">
             Escolha uma moldura, arraste a foto do carro e baixe a arte final.
           </p>

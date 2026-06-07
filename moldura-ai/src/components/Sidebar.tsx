@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 
 const NAV = [
   { href: "/dashboard", label: "Visão geral", icon: "▣" },
-  { href: "/dashboard/studio", label: "Estúdio", icon: "✦" },
+  { href: "/dashboard/studios", label: "Estúdios (HTML)", icon: "🎨" },
+  { href: "/dashboard/studio", label: "Editor de molduras", icon: "✦" },
   { href: "/dashboard/frames", label: "Molduras", icon: "▢" },
   { href: "/dashboard/gallery", label: "Galeria", icon: "▦" },
   { href: "/dashboard/branding", label: "Identidade visual", icon: "◐" },
@@ -47,7 +48,7 @@ export default function Sidebar({
           const active =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
-              : pathname.startsWith(item.href);
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}

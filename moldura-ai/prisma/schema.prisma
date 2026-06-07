@@ -35,6 +35,7 @@ model Tenant {
   users    User[]
   frames   Frame[]
   artworks Artwork[]
+  studios  Studio[]
 }
 
 model User {
@@ -72,6 +73,19 @@ model Frame {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   artworks Artwork[]
+
+  createdAt DateTime @default(now())
+}
+
+// A self-contained HTML "studio" exported from Claude Design and imported by a
+// tenant. Served inside the platform (in an iframe) behind login.
+model Studio {
+  id      String @id @default(cuid())
+  name    String
+  htmlUrl String // URL of the uploaded HTML file (Blob in prod, /uploads in dev)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
