@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/Sidebar";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 
 export default async function DashboardLayout({
   children,
@@ -24,6 +25,7 @@ export default async function DashboardLayout({
         isSuperAdmin={session.isSuperAdmin}
       />
       <main className="flex-1 overflow-auto">
+        {session.impersonating && <ImpersonationBanner tenantName={tenant.name} />}
         <div className="mx-auto max-w-6xl px-8 py-8">{children}</div>
       </main>
     </div>

@@ -21,6 +21,8 @@ export type SessionPayload = {
   role: string;
   email: string;
   isSuperAdmin: boolean;
+  // True when a super-admin is managing another tenant ("impersonation").
+  impersonating?: boolean;
 };
 
 export async function hashPassword(plain: string): Promise<string> {
@@ -65,6 +67,7 @@ export async function getSession(): Promise<SessionPayload | null> {
       role: String(payload.role),
       email: String(payload.email),
       isSuperAdmin: Boolean(payload.isSuperAdmin),
+      impersonating: Boolean(payload.impersonating),
     };
   } catch {
     return null;

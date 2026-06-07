@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { readableTextColor } from "@/lib/utils";
 
 type Tenant = {
@@ -21,10 +22,28 @@ export default function AdminPanel({
   initialTenants: Tenant[];
   currentTenantId: string;
 }) {
+  const router = useRouter();
   const [tenants, setTenants] = useState(initialTenants);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [managingId, setManagingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+
+  async function manage(t: Tenant) {
+    setManagingId(t.id);
+    const res = await fetch("/api/admin/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantId: t.id }),
+    });
+    if (res.ok) {
+      router.push("/dashboard");
+      router.refresh();
+    } else {
+      setMsg((await res.json()).error ?? "Falha ao abrir a loja");
+      setManagingId(null);
+    }
+  }
 
   const totals = tenants.reduce(
     (acc, t) => ({
@@ -165,10 +184,17 @@ export default function AdminPanel({
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-5 text-center">
+            <div className="flex shrink-0 items-center gap-4 text-center">
               <Stat n={t.counts.users} l="usuários" />
               <Stat n={t.counts.frames} l="molduras" />
               <Stat n={t.counts.artworks} l="artes" />
+              <button
+                onClick={() => manage(t)}
+                disabled={managingId === t.id}
+                className="btn-primary px-3 py-1.5 text-xs"
+              >
+                {managingId === t.id ? "Abrindo..." : "Gerenciar loja"}
+              </button>
               <button
                 onClick={() => remove(t)}
                 disabled={t.id === currentTenantId}

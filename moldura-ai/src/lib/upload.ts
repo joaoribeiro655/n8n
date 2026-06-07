@@ -22,10 +22,22 @@ const EXT: Record<string, string> = {
 };
 
 /**
+ * Finds the Vercel Blob read/write token, tolerating custom-prefixed names
+ * (e.g. MYSTORE_BLOB_READ_WRITE_TOKEN) that Vercel may create.
+ */
+function blobToken(): string | undefined {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.endsWith("BLOB_READ_WRITE_TOKEN") && v) return v;
+  }
+  return undefined;
+}
+
+/**
  * Persists an uploaded file (or a data URL string) and returns its public URL.
  *
  * In production (Vercel) it stores the file in Vercel Blob — enabled automatically
- * when the BLOB_READ_WRITE_TOKEN env var is present. Locally (no token) it falls
+ * when a *BLOB_READ_WRITE_TOKEN env var is present. Locally (no token) it falls
  * back to writing under public/uploads so development keeps working.
  */
 export async function saveUpload(
@@ -56,13 +68,23 @@ export async function saveUpload(
   const key = `${tenantId}/${filename}`;
 
   // Cloud storage (production / Vercel)
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  const token = blobToken();
+  if (token) {
     const blob = await put(key, buffer, {
       access: "public",
       contentType: mime,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+      token,
     });
     return blob.url;
+  }
+
+  // On Vercel the filesystem is read-only — fail with a clear message instead of
+  // a cryptic ENOENT, so the cause (missing Blob store) is obvious.
+  if (process.env.VERCEL) {
+    throw new Error(
+      "Armazenamento de imagens (Vercel Blob) não está configurado. " +
+        "Conecte um Blob Store ao projeto na aba Storage da Vercel e refaça o deploy (Redeploy).",
+    );
   }
 
   // Local filesystem fallback (development)
