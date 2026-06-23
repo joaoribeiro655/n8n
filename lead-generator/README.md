@@ -1,104 +1,88 @@
-# Lead Generator — listas para disparos frios (estilo Apollo)
+# Gerador de Leads 🎯
 
-Ferramenta de linha de comando que **gera listas de prospecção (cold outreach)**
-buscando contatos do seu **ICP** na base do [Apollo.io](https://apollo.io),
-enriquecendo os e-mails (opcional) e exportando tudo num **CSV pronto pra disparo**.
+App de **desktop (macOS)** para montar listas de prospecção (cold outreach)
+**raspando fontes públicas — sem chaves pagas**. Pensado para prospectar
+concessionárias (clientes do Moldura.AI), mas serve para qualquer nicho local.
 
-Pensada para prospectar clientes do **Moldura.AI** (ex.: donos e gerentes de
-concessionárias), mas funciona para qualquer ICP.
+Você clica no ícone → abre uma tela → escolhe cidade, tipo de negócio e fontes →
+o app coleta e você **baixa um CSV pronto pra disparar**.
 
-## O que ela faz
+## Fontes (todas grátis)
 
-1. Lê um arquivo de **ICP** (`icp.json`) com cargo, setor, tamanho e localização.
-2. Busca pessoas no Apollo (paginado, com deduplicação).
-3. (Opcional) **Enriquece** para revelar os e-mails — isso consome créditos do Apollo.
-4. Exporta um **CSV** com nome, cargo, e-mail, LinkedIn, empresa, telefone etc.
+| Fonte | O que traz | Confiabilidade |
+|---|---|---|
+| **Google Maps** | Empresa, telefone, site, endereço, nota/avaliações | Alta (fonte principal) |
+| **Sites** | E-mail e WhatsApp extraídos do site da empresa | Média (depende do site) |
+| **CNPJ / Receita** | Razão social, CNPJ, telefone, e-mail (Casa dos Dados + BrasilAPI) | Média |
+| **LinkedIn** | Busca **assistida** de decisores (abre a busca pronta) | Manual, mas estável |
 
-> ⚠️ A busca do Apollo **não retorna e-mails reais**. Para tê-los no CSV, use
-> `--enrich` (gasta 1 crédito por contato encontrado).
+> 🔎 **Como funciona o Google Maps sem chave:** o app é feito em Electron (um
+> Chromium), então ele abre o Maps numa janela invisível e lê os resultados —
+> de graça. Como o Google muda o layout às vezes, os seletores ficam isolados em
+> `src/sources/googleMaps.js` para facilitar o conserto.
+>
+> ⚖️ **Uso consciente:** raspagem pode contrariar os termos de alguns serviços e
+> os dados são pessoais (LGPD). Use para prospecção B2B legítima, com moderação
+> (evite volumes enormes) e ofereça opt-out nos disparos.
 
 ## Pré-requisitos
 
-- Node.js 18+ (testado no 22).
-- Uma **chave de API do Apollo** (plano com acesso à API):
-  Apollo → *Settings* → *Integrations* → *API* → *Create new key*.
+- macOS
+- [Node.js LTS](https://nodejs.org) instalado
 
-## Configuração
+## Rodar (modo simples)
+
+1. Baixe/abra esta pasta no Finder.
+2. Dê **dois cliques em `abrir.command`**.
+   - Na primeira vez ele instala o app (demora um pouco) e depois abre a janela.
+   - Se o macOS bloquear, clique com o botão direito → **Abrir** → **Abrir**.
+
+> Quer rodar pelo terminal? `npm install` e depois `npm start`.
+
+## Gerar o app com ícone (.app / .dmg)
+
+Para ter um aplicativo de verdade no Launchpad, com o ícone 🎯:
 
 ```bash
-cd lead-generator
-npm install                 # instala o tsx (executor de TypeScript)
-cp .env.example .env        # cole sua APOLLO_API_KEY
-cp icp.example.json icp.json # ajuste o seu ICP
+npm install
+npm run dist
 ```
 
-## Como usar
+O app sai em `dist/` (`Gerador de Leads.app` e um `.dmg`). Arraste o `.app`
+para a pasta **Aplicativos**.
 
-```bash
-# 1) Ver o tamanho do mercado para o ICP, sem gastar nada:
-npx tsx src/index.ts --icp icp.json --dry-run
+## Como usar a tela
 
-# 2) Gerar 300 leads (sem e-mail, sem créditos):
-npx tsx src/index.ts --icp icp.json --limit 300 -o concessionarias.csv
+1. **Cidades** — uma por linha (ex.: Curitiba, Londrina…).
+2. **Tipo de negócio** — ex.: `concessionária`, `revenda de carros`, `seminovos`.
+3. **Fontes** — marque Google Maps, Sites, CNPJ e/ou LinkedIn.
+4. **Limite por cidade** — quantos lugares puxar de cada cidade.
+5. **Gerar lista** — acompanhe o progresso embaixo.
+6. **Baixar CSV** — escolhe onde salvar.
 
-# 3) Gerar 100 leads JÁ com e-mails verificados (gasta créditos):
-npx tsx src/index.ts --icp icp.json --limit 100 --enrich
+Nas linhas: o nome da empresa abre no Google Maps, o site/decisor abrem no
+navegador.
+
+## Estrutura
+
+```
+src/
+  main.js              # processo principal (orquestra fontes, IPC, salvar CSV)
+  preload.js           # ponte segura para a tela
+  csv.js               # gera o CSV (UTF-8 + BOM)
+  store.js             # config local
+  sources/
+    googleMaps.js      # raspagem via Chromium do Electron
+    website.js         # e-mail/WhatsApp/Instagram do site (fetch + regex)
+    cnpj.js            # Casa dos Dados (lista) + BrasilAPI (enriquece)
+    linkedin.js        # busca assistida de decisores
+renderer/              # a tela (HTML/CSS/JS)
+build/
+  make-icon.mjs        # gera o ícone 🎯 (build/icon.png)
+abrir.command          # atalho de dois cliques no Mac
 ```
 
-Ajuda completa: `npx tsx src/index.ts --help`
+## Manutenção
 
-### Opções
-
-| Opção | Descrição |
-|---|---|
-| `-i, --icp <arquivo>` | Arquivo JSON com o ICP (padrão: `icp.json`) |
-| `-l, --limit <n>` | Total de leads (padrão: 100) |
-| `--per-page <n>` | Resultados por página, máx 100 |
-| `-e, --enrich` | Revela e-mails — **consome créditos** (1 por match) |
-| `--reveal-personal` | Ao enriquecer, traz também e-mails pessoais |
-| `-o, --output <arquivo>` | CSV de saída (padrão: `leads-<data>.csv`) |
-| `--dry-run` | Só mostra quantos leads existem (não baixa, não gasta) |
-
-## O arquivo de ICP
-
-Todos os campos são opcionais — quanto mais preenchido, mais qualificada a lista:
-
-```json
-{
-  "titles": ["dono", "gerente comercial"],
-  "seniorities": ["owner", "director", "manager"],
-  "personLocations": ["Brazil"],
-  "companyLocations": ["Brazil"],
-  "industryKeywords": ["car dealership", "automotive"],
-  "companySizes": ["1,10", "11,50", "51,200"],
-  "emailStatus": ["verified", "likely to engage"]
-}
-```
-
-| Campo | Mapeia para (Apollo) |
-|---|---|
-| `titles` | `person_titles` |
-| `seniorities` | `person_seniorities` (`owner`, `founder`, `c_suite`, `vp`, `head`, `director`, `manager`, `senior`, `entry`, `intern`) |
-| `personLocations` | `person_locations` |
-| `companyLocations` | `organization_locations` |
-| `industryKeywords` | `q_organization_keyword_tags` |
-| `companySizes` | `organization_num_employees_ranges` (faixas como `"11,50"`) |
-| `companyDomains` | `q_organization_domains_list` |
-| `keywords` | `q_keywords` (busca livre) |
-| `emailStatus` | `contact_email_status` |
-
-## Saída (CSV)
-
-Colunas: `nome, primeiro_nome, sobrenome, cargo, senioridade, email, status_email,
-linkedin, localizacao_pessoa, empresa, dominio, site, setor, tamanho_empresa,
-localizacao_empresa, telefone_empresa`.
-
-UTF-8 com BOM (acentos abrem certo no Excel e no Google Sheets). Os CSVs gerados
-ficam fora do git (veja `.gitignore`).
-
-## Boas práticas de cold outreach
-
-- **LGPD/consentimento:** use os dados para abordagem B2B legítima e ofereça
-  opt-out. Não compartilhe nem revenda a lista.
-- Comece com `--dry-run` para calibrar o ICP antes de gastar créditos.
-- Enriqueça em lotes pequenos e priorize `emailStatus: ["verified"]`.
+Se o Google Maps parar de trazer resultados, normalmente é só atualizar os
+seletores em `src/sources/googleMaps.js` (constante `SEL`).

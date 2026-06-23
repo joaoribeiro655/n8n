@@ -1,7 +1,6 @@
 node_modules/
-.env
-# CSVs gerados (listas de leads) não vão para o git
-leads-*.csv
-*.local.csv
 package-lock.json
-icp.json
+# build do electron-builder
+dist/
+# listas geradas
+leads-*.csv

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gerador de Leads</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="logo"><span class="dot">🎯</span> Gerador de Leads</div>
+      <div class="subtitle">Prospecção para disparos frios — Google Maps · Sites · CNPJ · LinkedIn</div>
+    </header>
+
+    <main class="layout">
+      <!-- Painel de filtros -->
+      <section class="panel">
+        <h2>Filtros</h2>
+
+        <label class="label">Cidades (uma por linha)</label>
+        <textarea id="cities" class="input" rows="4" placeholder="Curitiba&#10;Londrina&#10;Maringá"></textarea>
+
+        <label class="label">Tipo de negócio</label>
+        <input id="businessType" class="input" value="concessionária" />
+
+        <label class="label">UF (para a base de CNPJ)</label>
+        <input id="uf" class="input" placeholder="PR" maxlength="2" />
+
+        <label class="label">Limite por cidade</label>
+        <input id="limit" class="input" type="number" min="1" max="120" value="30" />
+
+        <label class="label">Fontes</label>
+        <div class="sources">
+          <label class="chk"><input type="checkbox" id="src-maps" checked /> <span>Google Maps</span></label>
+          <label class="chk"><input type="checkbox" id="src-site" checked /> <span>Sites (e-mail / WhatsApp)</span></label>
+          <label class="chk"><input type="checkbox" id="src-cnpj" /> <span>Base de CNPJ (Receita)</span></label>
+          <label class="chk"><input type="checkbox" id="src-linkedin" checked /> <span>LinkedIn (busca assistida)</span></label>
+        </div>
+
+        <button id="run" class="btn-primary">Gerar lista</button>
+        <button id="export" class="btn-ghost" disabled>⬇ Baixar CSV</button>
+
+        <div id="status" class="status"></div>
+      </section>
+
+      <!-- Resultados -->
+      <section class="results">
+        <div class="results-head">
+          <h2>Resultados</h2>
+          <span id="count" class="muted">Preencha os filtros e clique em “Gerar lista”.</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th>Site</th>
+                <th>Cidade</th>
+                <th>Nota</th>
+                <th>Decisor</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr class="empty"><td colspan="7">Nenhum lead ainda.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
