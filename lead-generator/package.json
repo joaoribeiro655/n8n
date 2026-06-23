@@ -1,0 +1,19 @@
+{
+  "name": "lead-generator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gerador de listas para disparos frios (cold outreach) usando a API do Apollo.io. Busca leads do seu ICP, enriquece e-mails e exporta um CSV pronto para abordagem.",
+  "bin": {
+    "lead-generator": "src/index.ts"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "gerar": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  }
+}

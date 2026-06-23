@@ -1,0 +1,10 @@
+{
+  "_comentario": "ICP de exemplo para o Moldura.AI: donos e gerentes de concessionárias no Brasil. Copie para icp.json e ajuste.",
+  "titles": ["dono", "proprietário", "diretor", "gerente comercial", "gerente de marketing", "owner", "sales manager"],
+  "seniorities": ["owner", "founder", "c_suite", "director", "manager"],
+  "personLocations": ["Brazil"],
+  "companyLocations": ["Brazil"],
+  "industryKeywords": ["car dealership", "automotive", "automotive dealership", "vehicle"],
+  "companySizes": ["1,10", "11,50", "51,200"],
+  "emailStatus": ["verified", "likely to engage"]
+}
