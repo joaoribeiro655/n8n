@@ -9,7 +9,6 @@ const NAV = [
   { href: "/dashboard/studio", label: "Editor de molduras", icon: "✦" },
   { href: "/dashboard/frames", label: "Molduras", icon: "▢" },
   { href: "/dashboard/gallery", label: "Galeria", icon: "▦" },
-  { href: "/dashboard/leads", label: "Gerar leads", icon: "🎯" },
   { href: "/dashboard/branding", label: "Identidade visual", icon: "◐" },
   { href: "/dashboard/team", label: "Equipe", icon: "◇" },
 ];
