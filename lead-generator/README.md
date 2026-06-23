@@ -14,7 +14,7 @@ o app coleta e você **baixa um CSV pronto pra disparar**.
 | **Google Maps** | Empresa, telefone, site, endereço, nota/avaliações | Alta (fonte principal) |
 | **Sites** | E-mail e WhatsApp extraídos do site da empresa | Média (depende do site) |
 | **CNPJ / Receita** | Razão social, CNPJ, telefone, e-mail (Casa dos Dados + BrasilAPI) | Média |
-| **LinkedIn** | Busca **assistida** de decisores (abre a busca pronta) | Manual, mas estável |
+| **LinkedIn (híbrido)** | Nome, cargo e perfil do decisor — achados via busca web, **sem login** | Média, **sem risco de banir conta** |
 
 > 🔎 **Como funciona o Google Maps sem chave:** o app é feito em Electron (um
 > Chromium), então ele abre o Maps numa janela invisível e lê os resultados —
@@ -75,7 +75,7 @@ src/
     googleMaps.js      # raspagem via Chromium do Electron
     website.js         # e-mail/WhatsApp/Instagram do site (fetch + regex)
     cnpj.js            # Casa dos Dados (lista) + BrasilAPI (enriquece)
-    linkedin.js        # busca assistida de decisores
+    linkedin.js        # acha decisores via busca web (DuckDuckGo), sem login
 renderer/              # a tela (HTML/CSS/JS)
 build/
   make-icon.mjs        # gera o ícone 🎯 (build/icon.png)

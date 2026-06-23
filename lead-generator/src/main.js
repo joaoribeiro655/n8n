@@ -7,7 +7,7 @@ const path = require("node:path");
 const { scrapeGoogleMaps } = require("./sources/googleMaps");
 const { extractFromWebsite } = require("./sources/website");
 const { listByCnae, enrichByCnpj } = require("./sources/cnpj");
-const { attachLinkedinSearches } = require("./sources/linkedin");
+const { enrichLinkedin } = require("./sources/linkedin");
 const { buildCsv } = require("./csv");
 
 let mainWindow = null;
@@ -130,9 +130,9 @@ ipcMain.handle("run", async (event, params) => {
       }
     }
 
-    // 5) LinkedIn — busca assistida (links prontos por empresa)
+    // 5) LinkedIn — coleta híbrida (acha o perfil do decisor via busca web, sem login)
     if (sources.linkedin) {
-      attachLinkedinSearches(leads, titles.length ? titles : undefined);
+      await enrichLinkedin(leads, titles.length ? titles : undefined, progress);
     }
 
     progress(`Concluído: ${leads.length} leads.`);

@@ -5,6 +5,8 @@
 const COLUMNS = [
   ["empresa", (l) => l.company],
   ["contato", (l) => l.name],
+  ["cargo_decisor", (l) => l.decisorTitle],
+  ["linkedin_perfil", (l) => l.linkedinUrl],
   ["categoria", (l) => l.category],
   ["telefone", (l) => l.phone],
   ["whatsapp", (l) => l.whatsapp],

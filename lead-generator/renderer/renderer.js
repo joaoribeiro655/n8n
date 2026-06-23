@@ -41,9 +41,13 @@ function renderRows(leads) {
       const site = l.website
         ? `<a href="#" data-ext="${escapeHtml(l.website)}">${escapeHtml(l.website.replace(/^https?:\/\//, "").slice(0, 30))}</a>`
         : "—";
-      const decisor = l.linkedinSearch
-        ? `<a href="#" data-ext="${escapeHtml(l.linkedinSearch)}">buscar no LinkedIn</a>`
-        : "—";
+      let decisor = "—";
+      if (l.linkedinUrl) {
+        const rotulo = l.name ? `${l.name}${l.decisorTitle ? " · " + l.decisorTitle : ""}` : "ver perfil";
+        decisor = `<a href="#" data-ext="${escapeHtml(l.linkedinUrl)}">${escapeHtml(rotulo)}</a>`;
+      } else if (l.linkedinSearch) {
+        decisor = `<a href="#" data-ext="${escapeHtml(l.linkedinSearch)}">buscar no LinkedIn</a>`;
+      }
       const empresa = l.mapsUrl
         ? `<a href="#" data-ext="${escapeHtml(l.mapsUrl)}">${escapeHtml(l.company)}</a>`
         : escapeHtml(l.company || "—");
