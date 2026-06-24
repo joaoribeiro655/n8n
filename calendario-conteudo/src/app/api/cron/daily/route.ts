@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generatePostArt } from "@/lib/generateAndStore";
+import { generatePostDesign } from "@/lib/generateAndStore";
 
 // GET/POST /api/cron/daily
 // Robô diário: 1 dia antes, gera a arte dos posts do dia seguinte (de todos os
@@ -10,7 +10,7 @@ import { generatePostArt } from "@/lib/generateAndStore";
 // a Vercel envia o header "Authorization: Bearer <CRON_SECRET>" automaticamente
 // quando a variável CRON_SECRET existe.
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -33,7 +33,7 @@ async function run() {
 
   const results: { postId: string; ok: boolean; error?: string }[] = [];
   for (const p of posts) {
-    const r = await generatePostArt(p.id);
+    const r = await generatePostDesign(p.id);
     results.push(r.ok ? { postId: p.id, ok: true } : { postId: p.id, ok: false, error: r.error });
   }
 

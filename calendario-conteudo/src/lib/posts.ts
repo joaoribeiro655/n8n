@@ -8,8 +8,10 @@ import { prisma } from "./prisma";
 export async function addVersion(opts: {
   postId: string;
   imageUrl: string;
-  source: "UPLOAD" | "AUTO";
+  source: "UPLOAD" | "CLAUDE";
+  html?: string | null;
   note?: string | null;
+  status?: "GENERATED" | "APPROVED";
 }) {
   const last = await prisma.postVersion.findFirst({
     where: { postId: opts.postId },
@@ -25,10 +27,14 @@ export async function addVersion(opts: {
         version: nextVersion,
         imageUrl: opts.imageUrl,
         source: opts.source,
+        html: opts.html ?? null,
         note: opts.note ?? null,
       },
     }),
-    prisma.post.update({ where: { id: opts.postId }, data: { status: "GENERATED" } }),
+    prisma.post.update({
+      where: { id: opts.postId },
+      data: { status: opts.status ?? "GENERATED" },
+    }),
   ]);
 
   return version;

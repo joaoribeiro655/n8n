@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import DesignCanvas, { type DesignCanvasHandle } from "@/components/DesignCanvas";
 
 type Version = {
   id: string;
   version: number;
   imageUrl: string;
+  html: string | null;
   note: string | null;
-  source: "UPLOAD" | "AUTO";
+  source: "CLAUDE" | "UPLOAD";
   createdAt: string;
 };
 
@@ -18,6 +20,7 @@ type Post = {
   copy: string;
   briefing: string;
   photoUrl: string | null;
+  designHtml: string | null;
   status: "PLANNED" | "GENERATED" | "APPROVED" | "REJECTED";
   feedback: string | null;
   versions: Version[];
@@ -40,16 +43,16 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-async function uploadImage(file: File): Promise<string> {
+async function uploadImage(file: File | Blob, name = "arte.png"): Promise<string> {
   const fd = new FormData();
-  fd.append("file", file);
+  fd.append("file", file instanceof File ? file : new File([file], name, { type: "image/png" }));
   const res = await fetch("/api/upload", { method: "POST", body: fd });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error);
   return data.url as string;
 }
 
-export default function CalendarBoard() {
+export default function CalendarBoard({ claudeEnabled }: { claudeEnabled: boolean }) {
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -113,7 +116,7 @@ export default function CalendarBoard() {
   const todayKey = dateKey(today);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+    <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
       <div className="card">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -181,6 +184,7 @@ export default function CalendarBoard() {
           <PostDetail
             key={selectedPost.id}
             post={selectedPost}
+            claudeEnabled={claudeEnabled}
             onClose={() => setSelectedId(null)}
             onChanged={load}
           />
@@ -196,9 +200,9 @@ export default function CalendarBoard() {
             <p className="font-medium text-gray-200">Como usar</p>
             <ol className="mt-3 list-decimal space-y-2 pl-4">
               <li>Passe o mouse num dia e clique no <span className="text-sky-300">+</span> para criar uma postagem.</li>
-              <li>Escreva a copy e o briefing; se quiser, suba uma foto de fundo.</li>
-              <li>Clique em <span className="text-sky-300">Gerar arte</span> — a plataforma renderiza no estilo da marca (ou o robô faz isso 1 dia antes).</li>
-              <li><span className="text-emerald-300">Aprove</span> ou <span className="text-rose-300">reprove</span> com um comentário; ao reprovar, ela já gera a próxima versão.</li>
+              <li>Escreva a copy e o briefing; se quiser, suba uma foto.</li>
+              <li>Clique em <span className="text-sky-300">Gerar com o Claude Design</span> — o Claude cria a arte na identidade da marca (ou o robô faz isso 1 dia antes).</li>
+              <li><span className="text-emerald-300">Aprove e exporte o PNG</span>, ou <span className="text-rose-300">reprove</span> com um comentário para gerar a próxima versão.</li>
             </ol>
           </div>
         )}
@@ -227,7 +231,7 @@ function PostCreate({
   async function pickPhoto(file: File) {
     setErr(null);
     try {
-      setPhotoUrl(await uploadImage(file));
+      setPhotoUrl(await uploadImage(file, file.name));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Falha no upload da foto");
     }
@@ -272,11 +276,11 @@ function PostCreate({
         <textarea className="input min-h-[100px]" value={copy} onChange={(e) => setCopy(e.target.value)} placeholder="Texto do post..." />
       </div>
       <div>
-        <label className="label">Briefing da arte (observações)</label>
-        <textarea className="input min-h-[70px]" value={briefing} onChange={(e) => setBriefing(e.target.value)} placeholder="O que a arte deve mostrar..." />
+        <label className="label">Briefing da arte (o que o Claude deve criar)</label>
+        <textarea className="input min-h-[70px]" value={briefing} onChange={(e) => setBriefing(e.target.value)} placeholder="Ex.: arte de lançamento, destaque o preço, clima de fim de semana..." />
       </div>
       <div>
-        <label className="label">Foto de fundo (opcional)</label>
+        <label className="label">Foto (opcional)</label>
         <input
           ref={fileRef}
           type="file"
@@ -304,10 +308,12 @@ function PostCreate({
 
 function PostDetail({
   post,
+  claudeEnabled,
   onClose,
   onChanged,
 }: {
   post: Post;
+  claudeEnabled: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -317,11 +323,11 @@ function PostDetail({
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const canvasRef = useRef<DesignCanvasHandle>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const latest = post.versions[0] ?? null;
   const dayLabel = dateKey(new Date(post.date)).split("-").reverse().join("/");
-  const nextV = (latest?.version ?? 0) + 1;
 
   async function patch(body: Record<string, unknown>, okMsg?: string) {
     setBusy(true);
@@ -341,25 +347,68 @@ function PostDetail({
     setBusy(false);
   }
 
-  // Renderiza a arte no servidor. Não mexe em busy/onChanged — quem chama decide,
-  // para poder encadear (reprovar → regerar).
+  // Pede ao Claude Design um novo design (HTML on-brand). Não mexe em busy:
+  // quem chama controla, para encadear reprovar → regerar.
   async function doGenerate(): Promise<{ ok: boolean; error?: string }> {
     const res = await fetch(`/api/posts/${post.id}/generate`, { method: "POST" });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) return { ok: false, error: data.error || "Falha na geração" };
+    if (!res.ok) return { ok: false, error: data.error || "Falha ao gerar" };
     return { ok: true };
   }
 
   async function generate() {
     setBusy(true);
-    setMsg(null);
+    setMsg("O Claude está criando a arte...");
     const r = await doGenerate();
-    setMsg(r.ok ? "Arte gerada ✓" : r.error ?? "Falha na geração");
+    setMsg(r.ok ? "Arte criada ✓ — revise e aprove" : r.error ?? "Falha ao gerar");
     if (r.ok) onChanged();
     setBusy(false);
   }
 
-  // Reprovar: guarda o feedback e já gera a próxima versão com as alterações.
+  async function exportBlob(): Promise<Blob> {
+    if (!canvasRef.current) throw new Error("Prévia não está pronta");
+    return canvasRef.current.toBlob();
+  }
+
+  async function approveAndExport() {
+    setBusy(true);
+    setMsg("Exportando o PNG...");
+    try {
+      const blob = await exportBlob();
+      const imageUrl = await uploadImage(blob);
+      const res = await fetch(`/api/posts/${post.id}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl, html: post.designHtml, source: "CLAUDE", approve: true }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setMsg("Aprovado e exportado ✓");
+      onChanged();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Falha ao exportar");
+    }
+    setBusy(false);
+  }
+
+  async function downloadPng() {
+    setBusy(true);
+    setMsg("Gerando o PNG...");
+    try {
+      const blob = await exportBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${dateKey(new Date(post.date))}-${post.title || "post"}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMsg("PNG baixado ✓");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Falha ao baixar");
+    }
+    setBusy(false);
+  }
+
+  // Reprovar: guarda o feedback e pede uma nova versão ao Claude com os ajustes.
   async function rejectFlow() {
     setBusy(true);
     setMsg(null);
@@ -370,9 +419,13 @@ function PostDetail({
         body: JSON.stringify({ status: "REJECTED", feedback: feedback || null }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      setMsg(`Reprovado — gerando a v${nextV} com as alterações...`);
-      const r = await doGenerate();
-      setMsg(r.ok ? `Nova versão (v${nextV}) gerada ✓` : r.error ?? "Falha ao regerar");
+      if (claudeEnabled) {
+        setMsg("Reprovado — o Claude está refazendo com os ajustes...");
+        const r = await doGenerate();
+        setMsg(r.ok ? "Nova versão criada ✓" : r.error ?? "Falha ao refazer");
+      } else {
+        setMsg("Reprovado.");
+      }
       setFeedback("");
       onChanged();
     } catch (e) {
@@ -381,18 +434,18 @@ function PostDetail({
     setBusy(false);
   }
 
-  async function uploadArt(file: File) {
+  async function uploadFinalArt(file: File) {
     setBusy(true);
     setMsg(null);
     try {
-      const url = await uploadImage(file);
+      const imageUrl = await uploadImage(file, file.name);
       const res = await fetch(`/api/posts/${post.id}/versions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: url, note: "Arte enviada (upload)" }),
+        body: JSON.stringify({ imageUrl, source: "UPLOAD", approve: true }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      setMsg("Arte enviada ✓");
+      setMsg("Arte enviada e aprovada ✓");
       onChanged();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Falha no upload");
@@ -420,18 +473,28 @@ function PostDetail({
         <button onClick={onClose} className="text-gray-500 hover:text-gray-300">✕</button>
       </div>
 
-      {latest ? (
-        <div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={latest.imageUrl} alt="" className="w-full rounded-lg border border-white/10" />
-          <div className="mt-1 flex items-center justify-center gap-3 text-xs text-gray-500">
-            <span>
-              v{latest.version}
-              {latest.source === "AUTO" ? " • renderizada" : " • enviada"}
-              {post.versions.length > 1 && ` • ${post.versions.length} versões`}
-            </span>
-            <a href={latest.imageUrl} download className="text-sky-400 hover:underline">⬇ baixar</a>
+      {/* Design do Claude */}
+      {post.designHtml ? (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">Design criado pelo Claude</p>
+          <DesignCanvas ref={canvasRef} html={post.designHtml} />
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={approveAndExport} disabled={busy} className="btn-ghost justify-center border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10">
+              ✓ Aprovar + PNG
+            </button>
+            <button onClick={downloadPng} disabled={busy} className="btn-ghost justify-center">
+              ⬇ Baixar PNG
+            </button>
           </div>
+          <textarea
+            className="input min-h-[60px] text-sm"
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="O que ajustar? (vira a próxima versão)"
+          />
+          <button onClick={rejectFlow} disabled={busy} className="btn-ghost w-full justify-center border border-rose-500/30 text-rose-300 hover:bg-rose-500/10">
+            ✕ Reprovar e refazer com o Claude
+          </button>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-white/10 p-4 text-center text-sm text-gray-500">
@@ -439,47 +502,41 @@ function PostDetail({
         </div>
       )}
 
-      {/* Geração da arte */}
+      {/* Gerar / enviar */}
       <div className="space-y-2 rounded-lg border border-white/10 p-3">
-        <p className="text-xs font-medium text-gray-400">Gerar arte (v{nextV})</p>
-        <button onClick={generate} disabled={busy} className="btn-primary w-full">
-          {busy ? "Gerando..." : `✨ Gerar arte na identidade da marca`}
+        <button
+          onClick={generate}
+          disabled={busy || !claudeEnabled}
+          className="btn-primary w-full"
+          title={claudeEnabled ? "" : "Configure ANTHROPIC_API_KEY para ativar"}
+        >
+          {post.designHtml ? "↻ Gerar nova versão com o Claude" : "✨ Gerar com o Claude Design"}
         </button>
+        {!claudeEnabled && (
+          <p className="text-[11px] text-amber-300/80">Claude Design indisponível — envie a arte pronta abaixo.</p>
+        )}
         <input
           ref={fileRef}
           type="file"
           accept="image/png,image/jpeg,image/webp"
           className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadArt(f); e.target.value = ""; }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFinalArt(f); e.target.value = ""; }}
         />
         <button onClick={() => fileRef.current?.click()} disabled={busy} className="btn-ghost w-full justify-center">
-          ⬆ Ou enviar uma arte pronta
+          ⬆ Enviar arte pronta (aprova direto)
         </button>
       </div>
 
-      {/* Ciclo de aprovação */}
+      {/* Arte publicada (PNG aprovado mais recente) */}
       {latest && (
-        <div className="space-y-2 rounded-lg border border-white/10 p-3">
-          <button
-            onClick={() => patch({ status: "APPROVED" }, "Aprovado ✓")}
-            disabled={busy}
-            className="btn-ghost w-full justify-center border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
-          >
-            ✓ Aprovar arte
-          </button>
-          <textarea
-            className="input min-h-[64px] text-sm"
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            placeholder="O que ajustar na próxima versão?"
-          />
-          <button
-            onClick={rejectFlow}
-            disabled={busy}
-            className="btn-ghost w-full justify-center border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
-          >
-            ✕ Reprovar e gerar nova versão
-          </button>
+        <div className="rounded-lg border border-white/10 p-3">
+          <p className="mb-2 text-xs font-medium text-gray-400">
+            Arte final — v{latest.version}
+            {post.versions.length > 1 && ` • ${post.versions.length} versões`}
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={latest.imageUrl} alt="" className="w-full rounded-lg border border-white/10" />
+          <a href={latest.imageUrl} download className="mt-1 block text-center text-xs text-sky-400 hover:underline">⬇ baixar PNG</a>
         </div>
       )}
 

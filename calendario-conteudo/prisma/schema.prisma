@@ -59,8 +59,8 @@ model Post {
   title    String? // título/destaque da arte
   copy     String   @default("") // legenda do post
   briefing String   @default("") // observações para a arte
-  template String   @default("CLASSIC") // layout usado na renderização
   photoUrl String? // foto de fundo opcional da arte
+  designHtml String? // design HTML gerado pelo Claude (Claude Design)
   status   String   @default("PLANNED") // PLANNED | GENERATED | APPROVED | REJECTED
 
   // Feedback deixado ao reprovar uma versão — alimenta a próxima v2/v3.
@@ -86,8 +86,9 @@ model PostVersion {
   id       String  @id @default(cuid())
   version  Int
   imageUrl String
-  note     String? // origem (renderizada / enviada) ou o feedback que a gerou
-  source   String  @default("AUTO") // AUTO (renderizada) | UPLOAD (enviada)
+  html     String? // snapshot do design HTML que gerou esta arte
+  note     String? // origem (Claude / enviada) ou o feedback que a gerou
+  source   String  @default("CLAUDE") // CLAUDE (gerada pela IA) | UPLOAD (enviada)
 
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)

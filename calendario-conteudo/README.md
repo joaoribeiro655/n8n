@@ -5,10 +5,10 @@ em um único calendário mensal — **tudo dentro da própria plataforma**, sem
 serviços externos.
 
 - **Calendário mensal** por cliente (multi-cliente / multi-tenant).
-- **A arte é gerada na plataforma**: o servidor renderiza o layout com o
-  **brand guide** do cliente (cores, logo, fonte, tagline) usando `@vercel/og`.
-  Funciona inclusive no robô diário — sem webhook, sem n8n, sem API externa.
-  (Também dá para **enviar uma arte pronta** quando quiser.)
+- **A arte é criada pelo Claude Design**: o **Claude** (`claude-opus-4-8`) gera o
+  design de cada post — um HTML/CSS sob medida, na identidade da marca (brand
+  guide). Esse design é **exportado para PNG no navegador** (`html-to-image`).
+  Funciona inclusive no robô diário. (Também dá para **enviar uma arte pronta**.)
 - **Galeria** com as artes aprovadas, download individual e **download do mês
   inteiro em .zip** — esse é o destino final (no lugar do Google Drive).
 - **Ciclo de aprovação com histórico** — cada arte vira uma versão (v1, v2, v3...).
@@ -21,17 +21,19 @@ serviços externos.
    calendário do próximo mês daquela empresa.
 3. Você **monta o calendário**: cria os posts com data + copy + briefing (+ foto
    de fundo opcional).
-4. **Todo dia, 1 dia antes** (Vercel Cron → `/api/cron/daily`), o robô pega os
-   posts do dia seguinte e **renderiza a arte na identidade da marca**. A arte
-   fica aguardando aprovação.
-5. Na plataforma você **Aprova** (vê a arte) ou **Reprova** → escreve as notas →
-   a plataforma **gera a próxima versão** na hora.
+4. **Todo dia, 1 dia antes** (Vercel Cron → `/api/cron/daily`), o robô pede ao
+   **Claude Design** a arte dos posts do dia seguinte. O design fica aguardando revisão.
+5. Na plataforma você abre o post, vê o design do Claude e **Aprova + exporta o
+   PNG**, ou **Reprova** → escreve as notas → o Claude **refaz** com os ajustes.
 6. As aprovadas ficam na **Galeria**, prontas para baixar (individual ou .zip).
+
+> **Requer `ANTHROPIC_API_KEY`** (o Claude Design). Gere em
+> [console.anthropic.com](https://console.anthropic.com) e configure no projeto.
 
 ## Stack
 
 Next.js 15 (App Router) · React 19 · Prisma · PostgreSQL · Tailwind ·
-`@vercel/og` (render) · Vercel Blob (armazenamento) · JSZip.
+Anthropic SDK (Claude Design) · `html-to-image` (export PNG) · Vercel Blob · JSZip.
 
 ## Rodando localmente
 

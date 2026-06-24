@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isClaudeConfigured } from "@/lib/claude";
 import CalendarBoard from "@/components/CalendarBoard";
 
 const MONTHS = [
@@ -28,15 +29,24 @@ export default async function CalendarPage() {
   if (!session) return null;
 
   const alert = await nextMonthAlert(session.tenantId);
+  const claudeEnabled = isClaudeConfigured();
 
   return (
     <div>
       <h1 className="text-2xl font-bold">Calendário</h1>
       <p className="mt-1 text-gray-400">
         Planeje as postagens do mês: escreva a copy e o briefing. Um dia antes, o
-        robô renderiza a arte na identidade da marca e ela vai para a galeria —
-        aí é só aprovar.
+        Claude Design cria a arte na identidade da marca; você revisa, aprova e
+        exporta o PNG.
       </p>
+
+      {!claudeEnabled && (
+        <div className="mt-6 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          A geração com o <strong>Claude Design</strong> ainda não está ligada. Defina a
+          variável <code>ANTHROPIC_API_KEY</code> no projeto para o Claude criar as artes.
+          Por enquanto, dá para enviar uma arte pronta manualmente.
+        </div>
+      )}
 
       {alert && (
         <div className="mt-6 flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -54,7 +64,7 @@ export default async function CalendarPage() {
       )}
 
       <div className="mt-8">
-        <CalendarBoard />
+        <CalendarBoard claudeEnabled={claudeEnabled} />
       </div>
     </div>
   );
