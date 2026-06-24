@@ -8,6 +8,8 @@ const patchSchema = z.object({
   title: z.string().max(120).nullable().optional(),
   copy: z.string().max(5000).optional(),
   briefing: z.string().max(5000).optional(),
+  photoUrl: z.string().nullable().optional(),
+  template: z.string().max(40).optional(),
   status: z.enum(["PLANNED", "GENERATED", "APPROVED", "REJECTED"]).optional(),
   feedback: z.string().max(2000).nullable().optional(),
 });
@@ -36,6 +38,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (parsed.data.title !== undefined) data.title = parsed.data.title;
   if (parsed.data.copy !== undefined) data.copy = parsed.data.copy;
   if (parsed.data.briefing !== undefined) data.briefing = parsed.data.briefing;
+  if (parsed.data.photoUrl !== undefined) data.photoUrl = parsed.data.photoUrl;
+  if (parsed.data.template !== undefined) data.template = parsed.data.template;
   if (parsed.data.status !== undefined) data.status = parsed.data.status;
   if (parsed.data.feedback !== undefined) data.feedback = parsed.data.feedback;
 

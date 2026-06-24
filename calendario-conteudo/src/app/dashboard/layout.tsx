@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession, getCurrentTenant } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
@@ -26,7 +27,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
           </div>
           <div className="flex items-center gap-3 text-sm text-gray-400">
-            <span className="hidden sm:inline">{session.email}</span>
+            <nav className="flex items-center gap-1">
+              <Link href="/dashboard/calendar" className="rounded-lg px-3 py-1.5 hover:bg-white/5 hover:text-gray-100">Calendário</Link>
+              <Link href="/dashboard/gallery" className="rounded-lg px-3 py-1.5 hover:bg-white/5 hover:text-gray-100">Galeria</Link>
+              <Link href="/dashboard/branding" className="rounded-lg px-3 py-1.5 hover:bg-white/5 hover:text-gray-100">Marca</Link>
+            </nav>
+            <span className="hidden md:inline">{session.email}</span>
             <LogoutButton />
           </div>
         </div>

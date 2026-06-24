@@ -8,7 +8,6 @@ type Version = {
   imageUrl: string;
   note: string | null;
   source: "UPLOAD" | "AUTO";
-  driveUrl: string | null;
   createdAt: string;
 };
 
@@ -18,6 +17,7 @@ type Post = {
   title: string | null;
   copy: string;
   briefing: string;
+  photoUrl: string | null;
   status: "PLANNED" | "GENERATED" | "APPROVED" | "REJECTED";
   feedback: string | null;
   versions: Version[];
@@ -40,13 +40,16 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function CalendarBoard({
-  autoEnabled,
-  driveEnabled,
-}: {
-  autoEnabled: boolean;
-  driveEnabled: boolean;
-}) {
+async function uploadImage(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error);
+  return data.url as string;
+}
+
+export default function CalendarBoard() {
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -178,8 +181,6 @@ export default function CalendarBoard({
           <PostDetail
             key={selectedPost.id}
             post={selectedPost}
-            autoEnabled={autoEnabled}
-            driveEnabled={driveEnabled}
             onClose={() => setSelectedId(null)}
             onChanged={load}
           />
@@ -195,15 +196,10 @@ export default function CalendarBoard({
             <p className="font-medium text-gray-200">Como usar</p>
             <ol className="mt-3 list-decimal space-y-2 pl-4">
               <li>Passe o mouse num dia e clique no <span className="text-sky-300">+</span> para criar uma postagem.</li>
-              <li>Escreva a copy e o briefing da arte.</li>
-              <li>Clique em <span className="text-sky-300">Gerar arte automática</span> (Claude Design) ou envie a arte pronta.</li>
-              <li><span className="text-emerald-300">Aprove</span> ou <span className="text-rose-300">reprove</span> com um comentário para gerar a próxima versão.</li>
+              <li>Escreva a copy e o briefing; se quiser, suba uma foto de fundo.</li>
+              <li>Clique em <span className="text-sky-300">Gerar arte</span> — a plataforma renderiza no estilo da marca (ou o robô faz isso 1 dia antes).</li>
+              <li><span className="text-emerald-300">Aprove</span> ou <span className="text-rose-300">reprove</span> com um comentário; ao reprovar, ela já gera a próxima versão.</li>
             </ol>
-            {!autoEnabled && (
-              <p className="mt-4 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                A geração automática (Claude Design) ainda não está configurada — por enquanto a arte é enviada manualmente. Configure <code>CLAUDE_DESIGN_WEBHOOK_URL</code> para ativar.
-              </p>
-            )}
           </div>
         )}
       </div>
@@ -223,8 +219,19 @@ function PostCreate({
   const [title, setTitle] = useState("");
   const [copy, setCopy] = useState("");
   const [briefing, setBriefing] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function pickPhoto(file: File) {
+    setErr(null);
+    try {
+      setPhotoUrl(await uploadImage(file));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Falha no upload da foto");
+    }
+  }
 
   async function create() {
     setSaving(true);
@@ -238,6 +245,7 @@ function PostCreate({
           title: title || null,
           copy,
           briefing,
+          photoUrl,
         }),
       });
       const data = await res.json();
@@ -256,7 +264,7 @@ function PostCreate({
         <button onClick={onClose} className="text-gray-500 hover:text-gray-300">✕</button>
       </div>
       <div>
-        <label className="label">Título (opcional)</label>
+        <label className="label">Título / destaque (opcional)</label>
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Promo do fim de semana" />
       </div>
       <div>
@@ -264,8 +272,27 @@ function PostCreate({
         <textarea className="input min-h-[100px]" value={copy} onChange={(e) => setCopy(e.target.value)} placeholder="Texto do post..." />
       </div>
       <div>
-        <label className="label">Briefing da arte (vai para a automação)</label>
-        <textarea className="input min-h-[80px]" value={briefing} onChange={(e) => setBriefing(e.target.value)} placeholder="O que a arte deve mostrar, estilo, elementos..." />
+        <label className="label">Briefing da arte (observações)</label>
+        <textarea className="input min-h-[70px]" value={briefing} onChange={(e) => setBriefing(e.target.value)} placeholder="O que a arte deve mostrar..." />
+      </div>
+      <div>
+        <label className="label">Foto de fundo (opcional)</label>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) pickPhoto(f); e.target.value = ""; }}
+        />
+        {photoUrl ? (
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photoUrl} alt="" className="h-12 w-12 rounded object-cover" />
+            <button onClick={() => setPhotoUrl(null)} className="text-xs text-gray-500 hover:text-rose-400">remover</button>
+          </div>
+        ) : (
+          <button onClick={() => fileRef.current?.click()} className="btn-ghost w-full justify-center">⬆ Subir foto</button>
+        )}
       </div>
       {err && <p className="text-sm text-rose-400">{err}</p>}
       <button onClick={create} disabled={saving} className="btn-primary w-full">
@@ -277,14 +304,10 @@ function PostCreate({
 
 function PostDetail({
   post,
-  autoEnabled,
-  driveEnabled,
   onClose,
   onChanged,
 }: {
   post: Post;
-  autoEnabled: boolean;
-  driveEnabled: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -292,13 +315,13 @@ function PostDetail({
   const [copy, setCopy] = useState(post.copy);
   const [briefing, setBriefing] = useState(post.briefing);
   const [feedback, setFeedback] = useState("");
-  const [urlInput, setUrlInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const latest = post.versions[0] ?? null;
   const dayLabel = dateKey(new Date(post.date)).split("-").reverse().join("/");
+  const nextV = (latest?.version ?? 0) + 1;
 
   async function patch(body: Record<string, unknown>, okMsg?: string) {
     setBusy(true);
@@ -318,8 +341,8 @@ function PostDetail({
     setBusy(false);
   }
 
-  // Chama a geração no servidor (Claude Design + upload no Drive). Não mexe em
-  // busy/onChanged — quem chama decide, para poder encadear (reprovar → regerar).
+  // Renderiza a arte no servidor. Não mexe em busy/onChanged — quem chama decide,
+  // para poder encadear (reprovar → regerar).
   async function doGenerate(): Promise<{ ok: boolean; error?: string }> {
     const res = await fetch(`/api/posts/${post.id}/generate`, { method: "POST" });
     const data = await res.json().catch(() => ({}));
@@ -327,17 +350,16 @@ function PostDetail({
     return { ok: true };
   }
 
-  async function generateAuto() {
+  async function generate() {
     setBusy(true);
     setMsg(null);
     const r = await doGenerate();
-    setMsg(r.ok ? "Arte gerada e enviada ✓" : r.error ?? "Falha na geração");
+    setMsg(r.ok ? "Arte gerada ✓" : r.error ?? "Falha na geração");
     if (r.ok) onChanged();
     setBusy(false);
   }
 
-  // Reprovar: guarda o feedback e, se a automática estiver ligada, já roda de
-  // novo com as alterações (gera a próxima versão e re-sobe no Drive).
+  // Reprovar: guarda o feedback e já gera a próxima versão com as alterações.
   async function rejectFlow() {
     setBusy(true);
     setMsg(null);
@@ -348,14 +370,9 @@ function PostDetail({
         body: JSON.stringify({ status: "REJECTED", feedback: feedback || null }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-
-      if (autoEnabled) {
-        setMsg(`Reprovado — gerando a v${nextV} com as alterações...`);
-        const r = await doGenerate();
-        setMsg(r.ok ? `Nova versão (v${nextV}) gerada ✓` : r.error ?? "Falha ao regerar");
-      } else {
-        setMsg(`Reprovado — envie a v${nextV} manualmente`);
-      }
+      setMsg(`Reprovado — gerando a v${nextV} com as alterações...`);
+      const r = await doGenerate();
+      setMsg(r.ok ? `Nova versão (v${nextV}) gerada ✓` : r.error ?? "Falha ao regerar");
       setFeedback("");
       onChanged();
     } catch (e) {
@@ -364,44 +381,21 @@ function PostDetail({
     setBusy(false);
   }
 
-  async function addVersionFromUrl(imageUrl: string, note?: string) {
-    const res = await fetch(`/api/posts/${post.id}/versions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageUrl, note: note ?? null }),
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
-  }
-
-  async function uploadFile(file: File) {
+  async function uploadArt(file: File) {
     setBusy(true);
     setMsg(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const up = await fetch("/api/upload", { method: "POST", body: fd });
-      const upData = await up.json();
-      if (!up.ok) throw new Error(upData.error);
-      await addVersionFromUrl(upData.url, "Arte enviada (upload)");
+      const url = await uploadImage(file);
+      const res = await fetch(`/api/posts/${post.id}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: url, note: "Arte enviada (upload)" }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
       setMsg("Arte enviada ✓");
       onChanged();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Falha no upload");
-    }
-    setBusy(false);
-  }
-
-  async function submitUrl() {
-    if (!urlInput.trim()) return;
-    setBusy(true);
-    setMsg(null);
-    try {
-      await addVersionFromUrl(urlInput.trim(), "Arte por URL");
-      setUrlInput("");
-      setMsg("Arte adicionada ✓");
-      onChanged();
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Falha");
     }
     setBusy(false);
   }
@@ -413,8 +407,6 @@ function PostDetail({
     onClose();
     onChanged();
   }
-
-  const nextV = (latest?.version ?? 0) + 1;
 
   return (
     <div className="card space-y-4">
@@ -432,21 +424,14 @@ function PostDetail({
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={latest.imageUrl} alt="" className="w-full rounded-lg border border-white/10" />
-          <p className="mt-1 text-center text-xs text-gray-500">
-            Versão atual: v{latest.version}
-            {latest.source === "AUTO" ? " • automática" : " • enviada"}
-            {post.versions.length > 1 && ` • ${post.versions.length} versões`}
-          </p>
-          {latest.driveUrl && (
-            <a
-              href={latest.driveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 block text-center text-xs text-sky-400 hover:underline"
-            >
-              📁 Abrir no Google Drive
-            </a>
-          )}
+          <div className="mt-1 flex items-center justify-center gap-3 text-xs text-gray-500">
+            <span>
+              v{latest.version}
+              {latest.source === "AUTO" ? " • renderizada" : " • enviada"}
+              {post.versions.length > 1 && ` • ${post.versions.length} versões`}
+            </span>
+            <a href={latest.imageUrl} download className="text-sky-400 hover:underline">⬇ baixar</a>
+          </div>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-white/10 p-4 text-center text-sm text-gray-500">
@@ -457,46 +442,19 @@ function PostDetail({
       {/* Geração da arte */}
       <div className="space-y-2 rounded-lg border border-white/10 p-3">
         <p className="text-xs font-medium text-gray-400">Gerar arte (v{nextV})</p>
-        <button
-          onClick={generateAuto}
-          disabled={busy || !autoEnabled}
-          className="btn-primary w-full"
-          title={autoEnabled ? "" : "Configure CLAUDE_DESIGN_WEBHOOK_URL para ativar"}
-        >
-          {busy ? "Gerando..." : "✨ Gerar arte automática (Claude Design)"}
+        <button onClick={generate} disabled={busy} className="btn-primary w-full">
+          {busy ? "Gerando..." : `✨ Gerar arte na identidade da marca`}
         </button>
-        {!autoEnabled && (
-          <p className="text-[11px] text-amber-300/80">
-            Automática indisponível — envie a arte pronta abaixo.
-          </p>
-        )}
-
         <input
           ref={fileRef}
           type="file"
           accept="image/png,image/jpeg,image/webp"
           className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) uploadFile(f);
-            e.target.value = "";
-          }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadArt(f); e.target.value = ""; }}
         />
         <button onClick={() => fileRef.current?.click()} disabled={busy} className="btn-ghost w-full justify-center">
-          ⬆ Enviar arte pronta (upload)
+          ⬆ Ou enviar uma arte pronta
         </button>
-
-        <div className="flex gap-2">
-          <input
-            className="input"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            placeholder="...ou cole a URL da arte"
-          />
-          <button onClick={submitUrl} disabled={busy || !urlInput.trim()} className="btn-ghost shrink-0">
-            Usar
-          </button>
-        </div>
       </div>
 
       {/* Ciclo de aprovação */}
@@ -520,7 +478,7 @@ function PostDetail({
             disabled={busy}
             className="btn-ghost w-full justify-center border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
           >
-            {autoEnabled ? "✕ Reprovar e gerar nova versão" : "✕ Reprovar / pedir nova versão"}
+            ✕ Reprovar e gerar nova versão
           </button>
         </div>
       )}
@@ -536,7 +494,7 @@ function PostDetail({
         <summary className="cursor-pointer px-3 py-2 text-sm text-gray-300">Editar copy / briefing</summary>
         <div className="space-y-3 p-3 pt-0">
           <div>
-            <label className="label">Título</label>
+            <label className="label">Título / destaque</label>
             <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
@@ -545,7 +503,7 @@ function PostDetail({
           </div>
           <div>
             <label className="label">Briefing da arte</label>
-            <textarea className="input min-h-[80px]" value={briefing} onChange={(e) => setBriefing(e.target.value)} />
+            <textarea className="input min-h-[70px]" value={briefing} onChange={(e) => setBriefing(e.target.value)} />
           </div>
           <button
             onClick={() => patch({ title: title || null, copy, briefing }, "Salvo ✓")}

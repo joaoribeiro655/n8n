@@ -1,7 +1,5 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isAutomationConfigured } from "@/lib/claudeDesign";
-import { isDriveConfigured } from "@/lib/drive";
 import CalendarBoard from "@/components/CalendarBoard";
 
 const MONTHS = [
@@ -19,9 +17,7 @@ async function nextMonthAlert(tenantId: string) {
 
   const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 2, 1);
-  const count = await prisma.post.count({
-    where: { tenantId, date: { gte: start, lt: end } },
-  });
+  const count = await prisma.post.count({ where: { tenantId, date: { gte: start, lt: end } } });
   if (count > 0) return null;
 
   return { monthLabel: `${MONTHS[start.getMonth()]} ${start.getFullYear()}`, daysLeft };
@@ -31,8 +27,6 @@ export default async function CalendarPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const autoEnabled = isAutomationConfigured();
-  const driveEnabled = isDriveConfigured();
   const alert = await nextMonthAlert(session.tenantId);
 
   return (
@@ -40,7 +34,8 @@ export default async function CalendarPage() {
       <h1 className="text-2xl font-bold">Calendário</h1>
       <p className="mt-1 text-gray-400">
         Planeje as postagens do mês: escreva a copy e o briefing. Um dia antes, o
-        robô gera a arte no Claude Design e sobe no Drive — aí é só aprovar.
+        robô renderiza a arte na identidade da marca e ela vai para a galeria —
+        aí é só aprovar.
       </p>
 
       {alert && (
@@ -59,7 +54,7 @@ export default async function CalendarPage() {
       )}
 
       <div className="mt-8">
-        <CalendarBoard autoEnabled={autoEnabled} driveEnabled={driveEnabled} />
+        <CalendarBoard />
       </div>
     </div>
   );

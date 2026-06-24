@@ -1,6 +1,7 @@
-// Calendário de Conteúdo — plataforma de planejamento e aprovação de posts.
-// Cada Cliente (Tenant) tem seu calendário mensal. A arte de cada post pode
-// vir pronta (upload/URL) ou ser gerada automaticamente pelo Claude Design.
+// Calendário de Conteúdo — plataforma de planejamento, geração e aprovação de
+// posts. Tudo acontece na própria plataforma: a arte é renderizada no servidor
+// a partir do brand guide do cliente (cores, logo, fontes), guardada na galeria
+// e aprovada por lá. Sem serviços externos.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,19 +12,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Um cliente da agência (ex.: "Copa"). Carrega marca básica para o briefing.
+// Um cliente da agência (ex.: "Copa"). Carrega o brand guide usado para
+// renderizar as artes na identidade visual da marca.
 model Tenant {
   id   String @id @default(cuid())
   slug String @unique
   name String
 
-  // Identidade visual usada como contexto no briefing da automação.
-  primaryColor String  @default("#0ea5e9")
-  logoUrl      String?
-  tagline      String?
-
-  // Pasta do cliente no Google Drive (criada/lembrada na 1ª subida).
-  driveFolderId String?
+  // Brand guide (vem do projeto do Claude Design).
+  primaryColor   String  @default("#0ea5e9")
+  secondaryColor String  @default("#0b1220")
+  accentColor    String  @default("#f59e0b")
+  textColor      String  @default("#ffffff")
+  fontFamily     String  @default("Inter")
+  logoUrl        String?
+  tagline        String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -48,14 +51,16 @@ model User {
 }
 
 // Um post agendado no calendário do mês.
-// A arte gerada vive em PostVersion (v1, v2, v3...) para manter o histórico
+// A arte renderizada vive em PostVersion (v1, v2, v3...) para manter o histórico
 // do ciclo de aprovação.
 model Post {
   id       String   @id @default(cuid())
   date     DateTime // dia em que o post vai ao ar
-  title    String? // rótulo interno (ex.: "Lançamento")
+  title    String? // título/destaque da arte
   copy     String   @default("") // legenda do post
-  briefing String   @default("") // instruções para a arte (vão para a automação)
+  briefing String   @default("") // observações para a arte
+  template String   @default("CLASSIC") // layout usado na renderização
+  photoUrl String? // foto de fundo opcional da arte
   status   String   @default("PLANNED") // PLANNED | GENERATED | APPROVED | REJECTED
 
   // Feedback deixado ao reprovar uma versão — alimenta a próxima v2/v3.
@@ -81,12 +86,8 @@ model PostVersion {
   id       String  @id @default(cuid())
   version  Int
   imageUrl String
-  note     String? // origem (upload / automático) ou o feedback que a gerou
-  source   String  @default("UPLOAD") // UPLOAD | AUTO
-
-  // Rastreamento do arquivo no Google Drive (quando a arte é subida lá).
-  driveFileId String?
-  driveUrl    String?
+  note     String? // origem (renderizada / enviada) ou o feedback que a gerou
+  source   String  @default("AUTO") // AUTO (renderizada) | UPLOAD (enviada)
 
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)

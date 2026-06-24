@@ -31,6 +31,8 @@ const schema = z.object({
   title: z.string().max(120).optional().nullable(),
   copy: z.string().max(5000).optional(),
   briefing: z.string().max(5000).optional(),
+  photoUrl: z.string().optional().nullable(),
+  template: z.string().max(40).optional(),
 });
 
 export async function POST(req: Request) {
@@ -50,6 +52,8 @@ export async function POST(req: Request) {
       title: parsed.data.title ?? null,
       copy: parsed.data.copy ?? "",
       briefing: parsed.data.briefing ?? "",
+      photoUrl: parsed.data.photoUrl ?? null,
+      template: parsed.data.template ?? "CLASSIC",
       tenantId: session.tenantId,
       createdById: session.userId,
     },

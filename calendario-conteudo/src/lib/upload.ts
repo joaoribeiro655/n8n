@@ -76,3 +76,36 @@ export async function saveUpload(
   await writeFile(path.join(dir, filename), buffer);
   return `/uploads/${tenantId}/${filename}`;
 }
+
+/**
+ * Salva um buffer já pronto (ex.: PNG renderizado na plataforma) e devolve a URL
+ * pública. Mesmo destino do saveUpload: Vercel Blob em produção, disco no dev.
+ */
+export async function saveBuffer(
+  tenantId: string,
+  buffer: Buffer,
+  mime = "image/png",
+  kind = "art",
+): Promise<string> {
+  const ext = EXT[mime] ?? "png";
+  const filename = `${kind}-${randomUUID()}.${ext}`;
+  const key = `${tenantId}/${filename}`;
+
+  const token = blobToken();
+  if (token) {
+    const blob = await put(key, buffer, { access: "public", contentType: mime, token });
+    return blob.url;
+  }
+
+  if (process.env.VERCEL) {
+    throw new Error(
+      "Armazenamento de imagens (Vercel Blob) não está configurado. " +
+        "Conecte um Blob Store ao projeto na aba Storage da Vercel e refaça o deploy (Redeploy).",
+    );
+  }
+
+  const dir = path.join(UPLOAD_ROOT, tenantId);
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, filename), buffer);
+  return `/uploads/${tenantId}/${filename}`;
+}

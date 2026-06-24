@@ -1,76 +1,49 @@
 import "server-only";
 import { prisma } from "./prisma";
 import { addVersion } from "./posts";
-import { generateArt } from "./claudeDesign";
-import { isDriveConfigured, uploadArtToDrive } from "./drive";
+import { renderPostArt } from "./render";
+import { saveBuffer } from "./upload";
 
 export type GenerateOutcome =
-  | { ok: true; versionId: string; imageUrl: string; driveUrl: string | null }
-  | { ok: false; error: string; reason?: "NOT_CONFIGURED" };
+  | { ok: true; versionId: string; imageUrl: string }
+  | { ok: false; error: string };
 
 /**
- * Gera a arte de um post pelo Claude Design e, se o Drive estiver configurado,
- * sobe o resultado em /<Cliente>/<Mês>/. Registra tudo como a próxima versão.
+ * Gera a arte de um post renderizando o layout com o brand guide do cliente —
+ * tudo na própria plataforma — e a salva na galeria como a próxima versão.
  *
- * Usado tanto pelo botão "Gerar arte automática" quanto pelo robô diário.
+ * Usado tanto pelo botão "Gerar arte" quanto pelo robô diário.
  */
 export async function generatePostArt(postId: string): Promise<GenerateOutcome> {
   const post = await prisma.post.findUnique({ where: { id: postId }, include: { tenant: true } });
   if (!post) return { ok: false, error: "Postagem não encontrada" };
 
-  const gen = await generateArt({
-    clientName: post.tenant.name,
-    clientSlug: post.tenant.slug,
-    title: post.title,
-    copy: post.copy,
-    briefing: post.briefing,
-    date: post.date.toISOString(),
-    feedback: post.feedback,
-    brand: {
-      primaryColor: post.tenant.primaryColor,
-      logoUrl: post.tenant.logoUrl,
-      tagline: post.tenant.tagline,
-    },
-  });
+  try {
+    const png = await renderPostArt(
+      {
+        name: post.tenant.name,
+        primaryColor: post.tenant.primaryColor,
+        secondaryColor: post.tenant.secondaryColor,
+        accentColor: post.tenant.accentColor,
+        textColor: post.tenant.textColor,
+        fontFamily: post.tenant.fontFamily,
+        logoUrl: post.tenant.logoUrl,
+        tagline: post.tenant.tagline,
+      },
+      { title: post.title, copy: post.copy, photoUrl: post.photoUrl },
+    );
 
-  if (!gen.ok) return { ok: false, error: gen.error, reason: gen.reason };
+    const imageUrl = await saveBuffer(post.tenantId, png, "image/png", "art");
 
-  // Sobe no Google Drive, se configurado. Falha no Drive não perde a arte:
-  // a versão é registrada com a imageUrl mesmo assim.
-  let driveFileId: string | null = null;
-  let driveUrl: string | null = null;
-  if (isDriveConfigured()) {
-    try {
-      const filename = `${post.date.toISOString().slice(0, 10)}-${post.id}.png`;
-      const up = await uploadArtToDrive({
-        clientName: post.tenant.name,
-        clientFolderId: post.tenant.driveFolderId,
-        date: post.date,
-        filename,
-        imageUrl: gen.imageUrl,
-      });
-      driveFileId = up.fileId;
-      driveUrl = up.url;
-      // Lembra a pasta do cliente para não recriar depois.
-      if (!post.tenant.driveFolderId && up.clientFolderId) {
-        await prisma.tenant.update({
-          where: { id: post.tenantId },
-          data: { driveFolderId: up.clientFolderId },
-        });
-      }
-    } catch (e) {
-      console.error("Falha ao subir no Drive:", e instanceof Error ? e.message : e);
-    }
+    const version = await addVersion({
+      postId: post.id,
+      imageUrl,
+      source: "AUTO",
+      note: post.feedback ?? "Renderizada na plataforma",
+    });
+
+    return { ok: true, versionId: version.id, imageUrl };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao gerar a arte" };
   }
-
-  const version = await addVersion({
-    postId: post.id,
-    imageUrl: gen.imageUrl,
-    source: "AUTO",
-    note: gen.note ?? post.feedback ?? null,
-    driveFileId,
-    driveUrl,
-  });
-
-  return { ok: true, versionId: version.id, imageUrl: gen.imageUrl, driveUrl };
 }
