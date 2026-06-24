@@ -1,0 +1,90 @@
+// Calendário de Conteúdo — plataforma de planejamento e aprovação de posts.
+// Cada Cliente (Tenant) tem seu calendário mensal. A arte de cada post pode
+// vir pronta (upload/URL) ou ser gerada automaticamente pelo Claude Design.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Um cliente da agência (ex.: "Copa"). Carrega marca básica para o briefing.
+model Tenant {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+
+  // Identidade visual usada como contexto no briefing da automação.
+  primaryColor String  @default("#0ea5e9")
+  logoUrl      String?
+  tagline      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+  posts Post[]
+}
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  name         String
+  passwordHash String
+  role         String @default("OWNER") // OWNER | MEMBER
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  posts Post[]
+
+  createdAt DateTime @default(now())
+}
+
+// Um post agendado no calendário do mês.
+// A arte gerada vive em PostVersion (v1, v2, v3...) para manter o histórico
+// do ciclo de aprovação.
+model Post {
+  id       String   @id @default(cuid())
+  date     DateTime // dia em que o post vai ao ar
+  title    String? // rótulo interno (ex.: "Lançamento")
+  copy     String   @default("") // legenda do post
+  briefing String   @default("") // instruções para a arte (vão para a automação)
+  status   String   @default("PLANNED") // PLANNED | GENERATED | APPROVED | REJECTED
+
+  // Feedback deixado ao reprovar uma versão — alimenta a próxima v2/v3.
+  feedback String?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  versions PostVersion[]
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, date])
+}
+
+// Uma arte de um Post. O `version` incremental guarda o histórico v1/v2/v3;
+// a versão mais recente é a arte atual em revisão.
+model PostVersion {
+  id       String  @id @default(cuid())
+  version  Int
+  imageUrl String
+  note     String? // origem (upload / automático) ou o feedback que a gerou
+  source   String  @default("UPLOAD") // UPLOAD | AUTO
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, version])
+}
