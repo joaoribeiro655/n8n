@@ -22,6 +22,9 @@ model Tenant {
   logoUrl      String?
   tagline      String?
 
+  // Pasta do cliente no Google Drive (criada/lembrada na 1ª subida).
+  driveFolderId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -80,6 +83,10 @@ model PostVersion {
   imageUrl String
   note     String? // origem (upload / automático) ou o feedback que a gerou
   source   String  @default("UPLOAD") // UPLOAD | AUTO
+
+  // Rastreamento do arquivo no Google Drive (quando a arte é subida lá).
+  driveFileId String?
+  driveUrl    String?
 
   postId String
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)

@@ -8,6 +8,7 @@ type Version = {
   imageUrl: string;
   note: string | null;
   source: "UPLOAD" | "AUTO";
+  driveUrl: string | null;
   createdAt: string;
 };
 
@@ -39,7 +40,13 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function CalendarBoard({ autoEnabled }: { autoEnabled: boolean }) {
+export default function CalendarBoard({
+  autoEnabled,
+  driveEnabled,
+}: {
+  autoEnabled: boolean;
+  driveEnabled: boolean;
+}) {
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -172,6 +179,7 @@ export default function CalendarBoard({ autoEnabled }: { autoEnabled: boolean })
             key={selectedPost.id}
             post={selectedPost}
             autoEnabled={autoEnabled}
+            driveEnabled={driveEnabled}
             onClose={() => setSelectedId(null)}
             onChanged={load}
           />
@@ -270,11 +278,13 @@ function PostCreate({
 function PostDetail({
   post,
   autoEnabled,
+  driveEnabled,
   onClose,
   onChanged,
 }: {
   post: Post;
   autoEnabled: boolean;
+  driveEnabled: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -308,17 +318,48 @@ function PostDetail({
     setBusy(false);
   }
 
+  // Chama a geração no servidor (Claude Design + upload no Drive). Não mexe em
+  // busy/onChanged — quem chama decide, para poder encadear (reprovar → regerar).
+  async function doGenerate(): Promise<{ ok: boolean; error?: string }> {
+    const res = await fetch(`/api/posts/${post.id}/generate`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || "Falha na geração" };
+    return { ok: true };
+  }
+
   async function generateAuto() {
     setBusy(true);
     setMsg(null);
+    const r = await doGenerate();
+    setMsg(r.ok ? "Arte gerada e enviada ✓" : r.error ?? "Falha na geração");
+    if (r.ok) onChanged();
+    setBusy(false);
+  }
+
+  // Reprovar: guarda o feedback e, se a automática estiver ligada, já roda de
+  // novo com as alterações (gera a próxima versão e re-sobe no Drive).
+  async function rejectFlow() {
+    setBusy(true);
+    setMsg(null);
     try {
-      const res = await fetch(`/api/posts/${post.id}/generate`, { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Falha na geração");
-      setMsg("Arte gerada automaticamente ✓");
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "REJECTED", feedback: feedback || null }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+
+      if (autoEnabled) {
+        setMsg(`Reprovado — gerando a v${nextV} com as alterações...`);
+        const r = await doGenerate();
+        setMsg(r.ok ? `Nova versão (v${nextV}) gerada ✓` : r.error ?? "Falha ao regerar");
+      } else {
+        setMsg(`Reprovado — envie a v${nextV} manualmente`);
+      }
+      setFeedback("");
       onChanged();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Falha na geração");
+      setMsg(e instanceof Error ? e.message : "Falha ao reprovar");
     }
     setBusy(false);
   }
@@ -396,6 +437,16 @@ function PostDetail({
             {latest.source === "AUTO" ? " • automática" : " • enviada"}
             {post.versions.length > 1 && ` • ${post.versions.length} versões`}
           </p>
+          {latest.driveUrl && (
+            <a
+              href={latest.driveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 block text-center text-xs text-sky-400 hover:underline"
+            >
+              📁 Abrir no Google Drive
+            </a>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-white/10 p-4 text-center text-sm text-gray-500">
@@ -465,11 +516,11 @@ function PostDetail({
             placeholder="O que ajustar na próxima versão?"
           />
           <button
-            onClick={() => patch({ status: "REJECTED", feedback: feedback || null }, `Reprovado — gere a v${nextV}`)}
+            onClick={rejectFlow}
             disabled={busy}
             className="btn-ghost w-full justify-center border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
           >
-            ✕ Reprovar / pedir nova versão
+            {autoEnabled ? "✕ Reprovar e gerar nova versão" : "✕ Reprovar / pedir nova versão"}
           </button>
         </div>
       )}

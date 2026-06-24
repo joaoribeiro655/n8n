@@ -10,6 +10,8 @@ export async function addVersion(opts: {
   imageUrl: string;
   source: "UPLOAD" | "AUTO";
   note?: string | null;
+  driveFileId?: string | null;
+  driveUrl?: string | null;
 }) {
   const last = await prisma.postVersion.findFirst({
     where: { postId: opts.postId },
@@ -26,6 +28,8 @@ export async function addVersion(opts: {
         imageUrl: opts.imageUrl,
         source: opts.source,
         note: opts.note ?? null,
+        driveFileId: opts.driveFileId ?? null,
+        driveUrl: opts.driveUrl ?? null,
       },
     }),
     prisma.post.update({ where: { id: opts.postId }, data: { status: "GENERATED" } }),
