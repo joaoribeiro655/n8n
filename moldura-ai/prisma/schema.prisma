@@ -36,6 +36,7 @@ model Tenant {
   frames   Frame[]
   artworks Artwork[]
   studios  Studio[]
+  posts    Post[]
 }
 
 model User {
@@ -50,6 +51,7 @@ model User {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   artworks Artwork[]
+  posts    Post[]
 
   createdAt DateTime @default(now())
 }
@@ -73,6 +75,7 @@ model Frame {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   artworks Artwork[]
+  posts    Post[]
 
   createdAt DateTime @default(now())
 }
@@ -104,4 +107,51 @@ model Artwork {
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
+}
+
+// A scheduled social-media post in a tenant's monthly content calendar.
+// Holds the copy + which frame/template to use; the generated art lives in
+// PostVersion (v1, v2, v3...) so the approval loop keeps full history.
+model Post {
+  id     String   @id @default(cuid())
+  date   DateTime // the day the post is scheduled to go live
+  title  String? // optional internal label (e.g. "Lançamento Onix")
+  copy   String   @default("") // the caption / text for the post
+  status String   @default("PLANNED") // PLANNED | GENERATED | APPROVED | REJECTED
+
+  // Feedback left when a version is rejected — drives the next v2/v3.
+  feedback String?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Which frame/template the art should use.
+  frameId String?
+  frame   Frame?  @relation(fields: [frameId], references: [id], onDelete: SetNull)
+
+  versions PostVersion[]
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, date])
+}
+
+// One generated art for a Post. Incrementing `version` keeps the v1/v2/v3
+// history; the most recent version is the current art for review.
+model PostVersion {
+  id       String  @id @default(cuid())
+  version  Int
+  imageUrl String
+  note     String? // generation note or the feedback that prompted this version
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, version])
 }

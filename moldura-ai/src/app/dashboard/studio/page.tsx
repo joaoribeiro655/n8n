@@ -5,11 +5,11 @@ import StudioEditor from "@/components/StudioEditor";
 export default async function StudioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ frame?: string }>;
+  searchParams: Promise<{ frame?: string; post?: string }>;
 }) {
   const session = await getSession();
   if (!session) return null;
-  const { frame } = await searchParams;
+  const { frame, post } = await searchParams;
 
   const frames = await prisma.frame.findMany({
     where: { tenantId: session.tenantId },
@@ -25,6 +25,7 @@ export default async function StudioPage({
       <div className="mt-8">
         <StudioEditor
           initialFrameId={frame}
+          postId={post}
           frames={frames.map((f) => ({
             id: f.id,
             name: f.name,

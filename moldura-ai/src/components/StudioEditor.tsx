@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { dataUrlToBlob, uploadBlob, type FrameDTO } from "@/lib/client";
 
 type Loaded = { el: HTMLImageElement; w: number; h: number };
@@ -19,10 +20,15 @@ function loadImage(src: string): Promise<Loaded> {
 export default function StudioEditor({
   frames,
   initialFrameId,
+  postId,
 }: {
   frames: FrameDTO[];
   initialFrameId?: string;
+  // When present, the editor was opened from a calendar post: saving attaches
+  // the art as a new version of that post instead of (only) the gallery.
+  postId?: string;
 }) {
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [frameId, setFrameId] = useState<string | null>(
@@ -182,6 +188,29 @@ export default function StudioEditor({
     setSaving(false);
   }
 
+  async function saveToPost() {
+    if (!postId) return;
+    const dataUrl = exportDataUrl();
+    if (!dataUrl) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      const url = await uploadBlob(dataUrlToBlob(dataUrl), "artwork");
+      const res = await fetch(`/api/posts/${postId}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: url }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setMsg("Arte salva na postagem ✓ Voltando ao calendário...");
+      router.push("/dashboard/calendar");
+      router.refresh();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Falha ao salvar");
+      setSaving(false);
+    }
+  }
+
   if (frames.length === 0) {
     return (
       <div className="card text-center">
@@ -251,7 +280,12 @@ export default function StudioEditor({
         </div>
 
         <div className="card space-y-3">
-          <button onClick={download} disabled={!photo} className="btn-primary w-full">
+          {postId && (
+            <button onClick={saveToPost} disabled={saving} className="btn-primary w-full">
+              {saving ? "Salvando..." : "✓ Salvar nesta postagem"}
+            </button>
+          )}
+          <button onClick={download} disabled={!photo} className={postId ? "btn-ghost w-full" : "btn-primary w-full"}>
             ⬇ Baixar arte (PNG)
           </button>
           <button onClick={saveToGallery} disabled={!photo || saving} className="btn-ghost w-full">
