@@ -390,22 +390,31 @@ function PostDetail({
     setBusy(false);
   }
 
+  function triggerDownload(blob: Blob, ext: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${dateKey(new Date(post.date))}-${post.title || "post"}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function downloadPng() {
     setBusy(true);
     setMsg("Gerando o PNG...");
     try {
-      const blob = await exportBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${dateKey(new Date(post.date))}-${post.title || "post"}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
+      triggerDownload(await exportBlob(), "png");
       setMsg("PNG baixado ✓");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Falha ao baixar");
     }
     setBusy(false);
+  }
+
+  function downloadHtml() {
+    if (!post.designHtml) return;
+    triggerDownload(new Blob([post.designHtml], { type: "text/html;charset=utf-8" }), "html");
+    setMsg("HTML baixado ✓");
   }
 
   // Reprovar: guarda o feedback e pede uma nova versão ao Claude com os ajustes.
@@ -478,13 +487,12 @@ function PostDetail({
         <div className="space-y-2">
           <p className="text-xs font-medium text-gray-400">Design criado pelo Claude</p>
           <DesignCanvas ref={canvasRef} html={post.designHtml} />
+          <button onClick={approveAndExport} disabled={busy} className="btn-ghost w-full justify-center border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10">
+            ✓ Aprovar + exportar PNG
+          </button>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={approveAndExport} disabled={busy} className="btn-ghost justify-center border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10">
-              ✓ Aprovar + PNG
-            </button>
-            <button onClick={downloadPng} disabled={busy} className="btn-ghost justify-center">
-              ⬇ Baixar PNG
-            </button>
+            <button onClick={downloadPng} disabled={busy} className="btn-ghost justify-center">⬇ Baixar PNG</button>
+            <button onClick={downloadHtml} disabled={busy} className="btn-ghost justify-center">⬇ Baixar HTML</button>
           </div>
           <textarea
             className="input min-h-[60px] text-sm"
