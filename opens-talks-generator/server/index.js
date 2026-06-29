@@ -1,8 +1,12 @@
 // ============================================================
 //  PROXY ANTHROPIC (servidor) — guarda a API key
 // ------------------------------------------------------------
-//  Este é o ÚNICO lugar onde a ANTHROPIC_API_KEY existe. O browser
-//  fala apenas com /api/messages; nunca recebe nem precisa da chave.
+//  Este é o ÚNICO lugar onde a chave da Anthropic existe. O browser
+//  fala apenas com /api/*; nunca recebe a chave de volta nem a embute
+//  no bundle. A chave pode vir de duas fontes:
+//    1) variável de ambiente ANTHROPIC_API_KEY (.env), ou
+//    2) configurada em tempo de execução pela tela de Configuração
+//       do app (POST /api/config/key) — fica só na MEMÓRIA do servidor.
 //  O modelo é fixado aqui (claude-sonnet-4-6) — o cliente não escolhe.
 // ============================================================
 import 'dotenv/config'
@@ -17,31 +21,103 @@ const ROOT = path.resolve(__dirname, '..')
 
 const PORT = process.env.PORT || 8787
 const MODEL = 'claude-sonnet-4-6' // modelo pedido no brief
-const API_KEY = process.env.ANTHROPIC_API_KEY
 
-if (!API_KEY) {
-  console.warn(
-    '\n[Opens Talks] AVISO: ANTHROPIC_API_KEY não definida. ' +
-      'Copie .env.example para .env e preencha a chave antes de gerar conteúdo.\n',
-  )
+// ---- Gestão da chave em tempo de execução ----
+// `runtimeKey` é definida pela tela de Configuração e vive só em memória
+// (some quando o servidor reinicia). A env serve de fallback.
+let runtimeKey = null
+let cachedClient = null
+let cachedClientKey = null
+
+function effectiveKey() {
+  return runtimeKey || process.env.ANTHROPIC_API_KEY || null
 }
 
-const anthropic = new Anthropic({ apiKey: API_KEY })
+// Indica de onde veio a chave ativa (para a UI exibir status).
+function keySource() {
+  if (runtimeKey) return 'runtime'
+  if (process.env.ANTHROPIC_API_KEY) return 'env'
+  return null
+}
+
+// Cria/reaproveita o client conforme a chave ativa.
+function getClient() {
+  const key = effectiveKey()
+  if (!key) return null
+  if (!cachedClient || cachedClientKey !== key) {
+    cachedClient = new Anthropic({ apiKey: key })
+    cachedClientKey = key
+  }
+  return cachedClient
+}
+
+// Validação leve de formato (não garante que a chave funciona, só evita erros bobos).
+function pareceChaveValida(k) {
+  return typeof k === 'string' && /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(k.trim())
+}
+
+if (!effectiveKey()) {
+  console.warn(
+    '\n[Opens Talks] Nenhuma chave configurada ainda. ' +
+      'Use a tela de Configuração no app, ou copie .env.example para .env.\n',
+  )
+}
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
 
-// Healthcheck simples.
+// Healthcheck + status da chave (a chave em si NUNCA é devolvida).
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, model: MODEL, hasKey: Boolean(API_KEY) })
+  res.json({ ok: true, model: MODEL, hasKey: Boolean(effectiveKey()), source: keySource() })
 })
 
-// Endpoint principal: recebe { system, messages, maxTokens } e devolve { text }.
-app.post('/api/messages', async (req, res) => {
-  if (!API_KEY) {
+// Define a chave em tempo de execução (vinda da tela de Configuração).
+app.post('/api/config/key', (req, res) => {
+  const { apiKey } = req.body || {}
+  if (!pareceChaveValida(apiKey)) {
     return res
-      .status(500)
-      .json({ error: 'Servidor sem ANTHROPIC_API_KEY configurada.' })
+      .status(400)
+      .json({ error: 'Chave inválida. Ela deve começar com "sk-ant-".' })
+  }
+  runtimeKey = apiKey.trim()
+  cachedClient = null // força recriar o client com a nova chave
+  res.json({ ok: true, hasKey: true, source: 'runtime' })
+})
+
+// Remove a chave configurada em tempo de execução (volta para a env, se houver).
+app.delete('/api/config/key', (_req, res) => {
+  runtimeKey = null
+  cachedClient = null
+  res.json({ ok: true, hasKey: Boolean(effectiveKey()), source: keySource() })
+})
+
+// Testa a chave ativa com uma chamada mínima (poucos tokens).
+app.post('/api/test', async (_req, res) => {
+  const client = getClient()
+  if (!client) return res.status(400).json({ ok: false, error: 'Nenhuma chave configurada.' })
+  try {
+    await client.messages.create({
+      model: MODEL,
+      max_tokens: 8,
+      messages: [{ role: 'user', content: 'ping' }],
+    })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[Opens Talks] Teste de chave falhou:', err?.message || err)
+    res.status(err?.status && Number.isInteger(err.status) ? err.status : 502).json({
+      ok: false,
+      error: err?.message || 'Falha ao validar a chave.',
+    })
+  }
+})
+
+// Endpoint principal: recebe { system, messages, maxTokens, webSearch } e devolve { text }.
+app.post('/api/messages', async (req, res) => {
+  const client = getClient()
+  if (!client) {
+    return res
+      .status(400)
+      .json({ error: 'Nenhuma chave da Anthropic configurada. Abra a Configuração e cole sua chave.' })
   }
 
   const { system, messages, maxTokens, webSearch } = req.body || {}
@@ -64,7 +140,7 @@ app.post('/api/messages', async (req, res) => {
     let response
     let guard = 0
     do {
-      response = await anthropic.messages.create({
+      response = await client.messages.create({
         model: MODEL,
         max_tokens: Number(maxTokens) || 4000,
         system: typeof system === 'string' ? system : undefined,

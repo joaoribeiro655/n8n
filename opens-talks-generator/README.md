@@ -12,12 +12,19 @@ Gerador de **lives** para a **Opens** (plataforma B2B de atendimento omnichannel
 
 O browser fala apenas com `/api/messages` (proxy Express em `server/index.js`). É o servidor que injeta a `ANTHROPIC_API_KEY` e chama a Anthropic. O front monta o `system` + `messages` e envia em cada requisição (a API não tem memória). O modelo é fixado no servidor — o cliente não pode trocá-lo.
 
+## Configurar a chave da Anthropic
+
+Há **duas formas** (a chave fica sempre só no servidor, nunca no navegador):
+
+1. **Pela interface (mais fácil, sem mexer em arquivos):** abra o app, clique em **⚙ Configuração** (ou no banner "Configurar agora"), cole a chave `sk-ant-…` e clique em **Salvar chave** — o app já testa a conexão. A chave fica na **memória do servidor** (some ao reiniciar; sem `localStorage`).
+2. **Por arquivo `.env`:** copie `cp .env.example .env` e preencha `ANTHROPIC_API_KEY`. Serve de fallback e é o ideal para deploy.
+
 ## Setup
 
 ```bash
 cd opens-talks-generator
 npm install
-cp .env.example .env      # preencha ANTHROPIC_API_KEY
+# opcional: cp .env.example .env  (ou configure a chave pela interface depois)
 ```
 
 ## Rodar em desenvolvimento
