@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ============================================================
+ *  IDENTIDADE OPENS — troque pelas cores exatas do brand aqui.
+ *  Todas as telas usam estas variáveis via classes utilitárias
+ *  (.opens-accent, bg-[var(--opens-accent)], etc.).
+ * ============================================================
+ */
+:root {
+  --opens-bg: #0d0f14;          /* fundo principal (tema escuro) */
+  --opens-surface: #161a23;     /* cards / superfícies */
+  --opens-surface-2: #1d222e;   /* superfícies elevadas / inputs */
+  --opens-border: #2a3140;      /* bordas sutis */
+  --opens-text: #eef1f6;        /* texto principal */
+  --opens-text-muted: #9aa3b2;  /* texto secundário */
+  --opens-accent: #6c5ce7;      /* cor primária da marca */
+  --opens-accent-2: #00d1b2;    /* cor de apoio / destaque */
+  --opens-danger: #ff6b6b;      /* erros */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--opens-bg);
+  color: var(--opens-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar discreta no tema escuro */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--opens-border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--opens-border);
+  border-radius: 999px;
+}
