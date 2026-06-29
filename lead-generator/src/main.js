@@ -8,6 +8,7 @@ const { scrapeGoogleMaps } = require("./sources/googleMaps");
 const { extractFromWebsite, phoneToWhatsapp } = require("./sources/website");
 const { listByCnae, enrichByCnpj } = require("./sources/cnpj");
 const { enrichLinkedin } = require("./sources/linkedin");
+const { createSearcher } = require("./sources/websearch");
 const { bestGuessEmail, domainFromUrl } = require("./sources/email");
 const { buildCsv } = require("./csv");
 
@@ -133,7 +134,16 @@ ipcMain.handle("run", async (event, params) => {
 
     // 5) LinkedIn — coleta híbrida (acha o perfil do decisor via busca web, sem login)
     if (sources.linkedin) {
-      await enrichLinkedin(leads, titles.length ? titles : undefined, progress);
+      const searcher = await createSearcher();
+      try {
+        await enrichLinkedin(leads, {
+          titles: titles.length ? titles : undefined,
+          searchHtml: searcher.search,
+          onProgress: progress,
+        });
+      } finally {
+        searcher.close();
+      }
     }
 
     // 6) E-mail provável do decisor (nome do decisor + domínio da empresa)
