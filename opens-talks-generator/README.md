@@ -42,12 +42,35 @@ Abra `http://localhost:5173`.
 
 > Rodando separado: `npm run dev:server` e, em outro terminal, `npm run dev:web`.
 
-## Produção
+## Produção (web)
 
 ```bash
 npm run build     # gera dist/
 npm start         # Express serve a API + os estáticos de dist/ na PORT (padrão 8787)
 ```
+
+## App de Mac (.app em /Applications)
+
+O app é empacotado com **Electron** — ele embute o Node, então o servidor e a
+chamada à Anthropic rodam dentro do `.app`. A chave fica persistida no diretório
+de dados do app (`userData/anthropic.key`, modo `600`), no seu Mac.
+
+**O empacotamento para macOS precisa rodar num Mac** (não dá para gerar `.dmg`
+no Linux). Em um Mac com Node 18+:
+
+```bash
+npm install
+npm run dist:mac     # gera release/Opens Talks-<versão>.dmg e o .app
+```
+
+Depois é só abrir o `.dmg` e arrastar **Opens Talks** para a pasta Aplicativos.
+Como o app não é assinado/notarizado, no primeiro abrir use **clique direito →
+Abrir** (ou Ajustes → Privacidade e Segurança → "Abrir mesmo assim").
+
+Rodar o app localmente sem empacotar (para testar): `npm run electron`.
+
+> Para distribuir fora do seu Mac sem o aviso de "desenvolvedor não
+> identificado", é preciso uma conta Apple Developer (assinatura + notarização).
 
 ## Telas
 
