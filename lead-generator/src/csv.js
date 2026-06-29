@@ -11,6 +11,7 @@ const COLUMNS = [
   ["telefone", (l) => l.phone],
   ["whatsapp", (l) => l.whatsapp],
   ["email", (l) => l.email],
+  ["email_provavel", (l) => l.emailGuess],
   ["site", (l) => l.website],
   ["instagram", (l) => l.instagram],
   ["endereco", (l) => l.address],

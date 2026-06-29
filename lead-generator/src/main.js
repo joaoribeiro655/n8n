@@ -5,9 +5,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { scrapeGoogleMaps } = require("./sources/googleMaps");
-const { extractFromWebsite } = require("./sources/website");
+const { extractFromWebsite, phoneToWhatsapp } = require("./sources/website");
 const { listByCnae, enrichByCnpj } = require("./sources/cnpj");
 const { enrichLinkedin } = require("./sources/linkedin");
+const { bestGuessEmail, domainFromUrl } = require("./sources/email");
 const { buildCsv } = require("./csv");
 
 let mainWindow = null;
@@ -133,6 +134,25 @@ ipcMain.handle("run", async (event, params) => {
     // 5) LinkedIn — coleta híbrida (acha o perfil do decisor via busca web, sem login)
     if (sources.linkedin) {
       await enrichLinkedin(leads, titles.length ? titles : undefined, progress);
+    }
+
+    // 6) E-mail provável do decisor (nome do decisor + domínio da empresa)
+    if (sources.site) {
+      const alvo = leads.filter((l) => l.name && l.website && !l.email);
+      let done = 0;
+      for (const lead of alvo) {
+        const guess = await bestGuessEmail(lead.name, domainFromUrl(lead.website));
+        if (guess) lead.emailGuess = guess;
+        progress(`E-mail provável: ${++done}/${alvo.length}…`);
+      }
+    }
+
+    // 7) WhatsApp a partir do telefone coletado (sempre, é grátis e instantâneo)
+    for (const lead of leads) {
+      if (!lead.whatsapp && lead.phone) {
+        const wa = phoneToWhatsapp(lead.phone);
+        if (wa) lead.whatsapp = wa;
+      }
     }
 
     progress(`Concluído: ${leads.length} leads.`);

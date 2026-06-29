@@ -51,10 +51,18 @@ function renderRows(leads) {
       const empresa = l.mapsUrl
         ? `<a href="#" data-ext="${escapeHtml(l.mapsUrl)}">${escapeHtml(l.company)}</a>`
         : escapeHtml(l.company || "—");
+      const tel = l.whatsapp
+        ? `${escapeHtml(l.phone || "")} <a href="#" data-ext="${escapeHtml(l.whatsapp)}">zap</a>`
+        : escapeHtml(l.phone || "—");
+      const emailCell = l.email
+        ? escapeHtml(l.email)
+        : l.emailGuess
+          ? `~ ${escapeHtml(l.emailGuess)}`
+          : "—";
       return `<tr>
         <td>${empresa}</td>
-        <td>${escapeHtml(l.phone || "—")}</td>
-        <td>${escapeHtml(l.email || (l.whatsapp ? "wpp: " + l.whatsapp : "—"))}</td>
+        <td>${tel}</td>
+        <td>${emailCell}</td>
         <td>${site}</td>
         <td>${escapeHtml(l.city || "—")}</td>
         <td>${escapeHtml(l.rating || "—")}</td>
