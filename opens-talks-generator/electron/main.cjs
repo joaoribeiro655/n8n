@@ -10,6 +10,7 @@
 const { app, BrowserWindow, shell } = require('electron')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
+const { initAutoUpdate } = require('./updater.cjs')
 
 let serverPort = null
 let mainWindow = null
@@ -62,6 +63,9 @@ app.whenReady().then(async () => {
     console.error('[Opens Talks] Falha ao subir o servidor embutido:', err)
   }
   createWindow()
+
+  // Verifica atualizações ao abrir (só no app empacotado e assinado).
+  initAutoUpdate({ app, getWindow: () => mainWindow })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

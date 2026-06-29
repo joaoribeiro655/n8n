@@ -72,6 +72,46 @@ Rodar o app localmente sem empacotar (para testar): `npm run electron`.
 > Para distribuir fora do seu Mac sem o aviso de "desenvolvedor não
 > identificado", é preciso uma conta Apple Developer (assinatura + notarização).
 
+## Auto-update (atualizar sozinho ao abrir)
+
+O app usa **electron-updater** + **GitHub Releases**: ao abrir, ele verifica se
+há versão mais nova, baixa em segundo plano e oferece **Reiniciar agora**. A
+chave e configurações são mantidas.
+
+**Pré-requisitos (uma vez):**
+
+1. **Conta Apple Developer** (US$99/ano). No macOS, o auto-update **exige** o app
+   assinado com um certificado **Developer ID Application** — sem isso o macOS
+   recusa a atualização. Instale o certificado no Keychain do Mac de build.
+2. Releases precisam ser **baixáveis** pelo app. Se o repositório for privado, a
+   forma mais simples é publicar as versões num **repositório público dedicado**
+   (ex.: `opens-talks-releases`) e apontar `build.publish` para ele. Se o repo for
+   público, pode manter como está.
+3. Um **GitHub token** com permissão de criar releases, exportado como `GH_TOKEN`.
+
+**Variáveis no Mac de build (assinatura + notarização):**
+
+```bash
+export CSC_LINK="/caminho/DeveloperID.p12"   # ou já instalado no Keychain
+export CSC_KEY_PASSWORD="senha-do-p12"
+export APPLE_ID="seu-apple-id@email.com"
+export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # app-specific password
+export APPLE_TEAM_ID="SEUTEAMID"
+export GH_TOKEN="ghp_..."
+```
+
+**Publicar uma nova versão:**
+
+1. Suba o número em `package.json` → `"version"` (ex.: `0.1.0` → `0.1.1`).
+   O auto-update só dispara quando a versão publicada é maior que a instalada.
+2. Rode: `npm run release:mac` — isso builda, assina, notariza e publica o
+   `.dmg`, o `.zip` e o `latest-mac.yml` no GitHub Releases.
+3. Os apps instalados pegam a atualização no próximo "abrir".
+
+> Sem a conta Apple, o app continua funcionando normalmente (a parte web/desktop),
+> mas o auto-update no macOS fica inativo — aí a atualização é reempacotar e
+> reinstalar manualmente.
+
 ## Telas
 
 1. **Gerador de Temas** — escolha vertical, objetivo, nível de funil e quantidade (3–8). Com a opção **"Basear em notícias e tendências atuais"** ligada (padrão), o servidor ativa a **busca na web** da Anthropic para o modelo ancorar cada tema em algo que está em pauta agora (cada card mostra o gancho de atualidade). Cada tema tem botão **Montar episódio**.
