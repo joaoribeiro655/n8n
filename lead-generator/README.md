@@ -30,12 +30,17 @@ o app coleta e você **baixa um CSV pronto pra disparar**.
 - macOS
 - [Node.js LTS](https://nodejs.org) instalado
 
-## Rodar (modo simples)
+## Rodar (modo simples) — e ele se atualiza sozinho
 
 1. Baixe/abra esta pasta no Finder.
 2. Dê **dois cliques em `abrir.command`**.
    - Na primeira vez ele instala o app (demora um pouco) e depois abre a janela.
    - Se o macOS bloquear, clique com o botão direito → **Abrir** → **Abrir**.
+
+> 🔄 **Atualização automática:** toda vez que você abre pelo `abrir.command`, ele
+> busca sozinho a versão mais nova no GitHub antes de abrir. Você não precisa
+> rodar nenhum comando para atualizar — é só abrir. (Funciona quando a pasta veio
+> do GitHub via `git`. Sem internet, ele simplesmente abre a versão atual.)
 
 > Quer rodar pelo terminal? `npm install` e depois `npm start`.
 
@@ -50,6 +55,11 @@ npm run dist
 
 O app sai em `dist/` (`Gerador de Leads.app` e um `.dmg`). Arraste o `.app`
 para a pasta **Aplicativos**.
+
+> ⚠️ O `.app` empacotado **não** se atualiza sozinho (é uma cópia "congelada").
+> Para ter sempre a versão mais nova sem esforço, use o `abrir.command` — ele
+> atualiza a cada vez que abre. Se preferir o `.app`, refaça `npm run dist` quando
+> quiser atualizar.
 
 ## Como usar a tela
 
