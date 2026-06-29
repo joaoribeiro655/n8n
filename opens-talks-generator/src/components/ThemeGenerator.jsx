@@ -10,6 +10,7 @@ export default function ThemeGenerator({ onMontarEpisodio }) {
   const [objetivo, setObjetivo] = useState(OBJETIVOS[0])
   const [nivelFunil, setNivelFunil] = useState(NIVEIS_FUNIL[0])
   const [quantidade, setQuantidade] = useState(4)
+  const [usarWeb, setUsarWeb] = useState(true) // basear em notícias atuais (web)
 
   const [temas, setTemas] = useState([])
   const [loading, setLoading] = useState(false)
@@ -21,7 +22,7 @@ export default function ThemeGenerator({ onMontarEpisodio }) {
     setError('')
     try {
       const resultado = await gerarTemas(
-        { vertical, objetivo, nivelFunil, quantidade },
+        { vertical, objetivo, nivelFunil, quantidade, webSearch: usarWeb },
         OPENS_SYSTEM_CONTEXT,
       )
       setTemas(resultado)
@@ -48,11 +49,24 @@ export default function ThemeGenerator({ onMontarEpisodio }) {
           <NumberSelect label="Qtd. de temas" value={quantidade} onChange={setQuantidade} min={3} max={8} disabled={loading} />
         </div>
 
+        <label className="mt-5 flex w-fit cursor-pointer items-center gap-2.5 text-sm text-[var(--opens-text-muted)]">
+          <input
+            type="checkbox"
+            checked={usarWeb}
+            disabled={loading}
+            onChange={(e) => setUsarWeb(e.target.checked)}
+            className="h-4 w-4 accent-[var(--opens-accent)]"
+          />
+          Basear em notícias e tendências atuais (busca na web)
+        </label>
+
         <div className="mt-6 flex items-center gap-4">
           <Button onClick={handleGerar} disabled={loading}>
             {loading ? 'Gerando temas…' : 'Gerar temas'}
           </Button>
-          {loading && <Spinner label="Consultando a Opens Talks AI…" />}
+          {loading && (
+            <Spinner label={usarWeb ? 'Buscando o que está em pauta agora…' : 'Consultando a Opens Talks AI…'} />
+          )}
         </div>
 
         <div className="mt-4">
@@ -71,7 +85,7 @@ export default function ThemeGenerator({ onMontarEpisodio }) {
                 key={i}
                 tema={tema}
                 onMontar={() =>
-                  onMontarEpisodio(tema, { vertical, objetivo, nivelFunil })
+                  onMontarEpisodio(tema, { vertical, objetivo, nivelFunil, webSearch: usarWeb })
                 }
               />
             ))}
@@ -86,6 +100,12 @@ function TemaCard({ tema, onMontar }) {
   return (
     <article className="flex flex-col rounded-2xl border border-[var(--opens-border)] bg-[var(--opens-surface)] p-5 transition hover:border-[var(--opens-accent)]">
       <h4 className="text-base font-bold leading-snug">{tema.titulo}</h4>
+
+      {tema.contexto_atual && (
+        <p className="mt-3 rounded-lg border border-[var(--opens-accent-2)]/30 bg-[var(--opens-accent-2)]/10 px-3 py-2 text-xs text-[var(--opens-accent-2)]">
+          🗞 Em pauta agora: {tema.contexto_atual}
+        </p>
+      )}
 
       <dl className="mt-3 space-y-2 text-sm">
         <Linha rotulo="Ângulo" valor={tema.angulo} />

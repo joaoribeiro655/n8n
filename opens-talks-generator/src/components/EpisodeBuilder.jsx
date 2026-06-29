@@ -149,6 +149,21 @@ function EpisodioView({ ep }) {
         {ep.copy_linkedin && <CopyBloco titulo="LinkedIn" texto={ep.copy_linkedin} />}
       </div>
 
+      {/* Posts de aquecimento */}
+      {Array.isArray(ep.posts_aquecimento) && ep.posts_aquecimento.length > 0 && (
+        <section className="rounded-2xl border border-[var(--opens-border)] bg-[var(--opens-surface)] p-6">
+          <h3 className="mb-1 text-base font-bold">Posts de aquecimento</h3>
+          <p className="mb-4 text-sm text-[var(--opens-text-muted)]">
+            Sequência para publicar antes da live e gerar expectativa.
+          </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {ep.posts_aquecimento.map((post, i) => (
+              <PostAquecimentoCard key={i} post={post} indice={i + 1} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Hashtags */}
       {Array.isArray(ep.hashtags) && ep.hashtags.length > 0 && (
         <section className="rounded-2xl border border-[var(--opens-border)] bg-[var(--opens-surface)] p-6">
@@ -166,6 +181,43 @@ function EpisodioView({ ep }) {
         </section>
       )}
     </div>
+  )
+}
+
+function PostAquecimentoCard({ post, indice }) {
+  const [copiado, setCopiado] = useState(false)
+  async function copiar() {
+    const ok = await copiarTexto(post.copy || '')
+    if (ok) {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1500)
+    }
+  }
+  return (
+    <article className="flex flex-col rounded-xl border border-[var(--opens-border)] bg-[var(--opens-surface-2)] p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="rounded-md bg-[var(--opens-accent)]/20 px-2 py-0.5 text-xs font-bold text-[var(--opens-accent)]">
+          Post {indice}
+        </span>
+        <button
+          type="button"
+          onClick={copiar}
+          className="text-xs font-semibold text-[var(--opens-text-muted)] transition hover:text-[var(--opens-text)]"
+        >
+          {copiado ? '✓' : 'Copiar'}
+        </button>
+      </div>
+      <div className="mb-2 flex flex-wrap gap-1.5 text-xs text-[var(--opens-text-muted)]">
+        {post.quando && <span>🗓 {post.quando}</span>}
+        {post.canal && <span>· {post.canal}</span>}
+      </div>
+      {post.objetivo && (
+        <p className="mb-2 text-xs italic text-[var(--opens-accent-2)]">{post.objetivo}</p>
+      )}
+      <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--opens-text)]">
+        {post.copy}
+      </p>
+    </article>
   )
 }
 

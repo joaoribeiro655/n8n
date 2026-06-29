@@ -7,7 +7,17 @@ CONTEXTO DA OPENS:
 - ICP Tier 1: Tecnologia e Financeiro. Tier 2: Saúde/clínicas.
 - Diferencial vs Zendesk/Freshdesk: foco em WhatsApp/omnichannel para o mercado brasileiro.
 - Os temas devem atacar dores reais de operação de atendimento, CX, conversão de leads e retenção.
-- A série de webinars se chama "Opens Talks" — tagline: "Conversas sobre atendimento que vende".
+
+FORMATO DOS EVENTOS:
+- Os webinars são LIVES (transmissões ao vivo, ex.: LinkedIn Live, YouTube, Instagram).
+- A série de lives se chama "Opens Talks" — tagline: "Conversas sobre atendimento que vende".
+- Pense em ritmo de live: interação com a audiência, perguntas ao vivo, blocos dinâmicos.
+
+ATUALIDADE (MUITO IMPORTANTE):
+- Os temas devem dialogar com o CONTEXTO ATUAL da sociedade, das notícias e da tecnologia.
+- Quando a ferramenta de busca na web estiver disponível, pesquise tendências e notícias
+  recentes (IA, automação, comportamento do consumidor, regulação, economia) e conecte cada
+  sugestão a algo que está em pauta AGORA — não use exemplos genéricos ou datados.
 
 TOM E ESTILO:
 - Profissional, direto, voltado a gestores de atendimento, CX e comercial.
@@ -15,9 +25,9 @@ TOM E ESTILO:
 - Evite jargão vazio e promessas genéricas; foque em valor concreto e acionável.
 
 REGRA DE SAÍDA (OBRIGATÓRIA):
-- Responda SOMENTE com JSON válido.
-- Não use markdown, não use blocos de código (\`\`\`), não escreva preâmbulo nem comentários.
-- A primeira coisa da resposta deve ser "{" e a última deve ser "}".`
+- Sua resposta FINAL deve ser SOMENTE JSON válido.
+- Não use markdown, não use blocos de código (\`\`\`), não escreva preâmbulo nem comentários no JSON final.
+- O JSON final deve começar com "{" e terminar com "}".`
 
 // Rótulos amigáveis para montar os prompts de forma legível.
 export const VERTICAIS = ['Tecnologia', 'Financeiro', 'Saúde/Clínicas', 'Genérico']
@@ -28,3 +38,12 @@ export const OBJETIVOS = [
   'Ativação de base',
 ]
 export const NIVEIS_FUNIL = ['Topo', 'Meio', 'Fundo']
+
+// Data de hoje em pt-BR — usada para orientar a busca por notícias recentes.
+export function dataDeHoje() {
+  return new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+}

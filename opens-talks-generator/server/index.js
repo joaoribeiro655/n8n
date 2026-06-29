@@ -44,21 +44,42 @@ app.post('/api/messages', async (req, res) => {
       .json({ error: 'Servidor sem ANTHROPIC_API_KEY configurada.' })
   }
 
-  const { system, messages, maxTokens } = req.body || {}
+  const { system, messages, maxTokens, webSearch } = req.body || {}
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Campo "messages" é obrigatório.' })
   }
 
-  try {
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: Number(maxTokens) || 4000,
-      system: typeof system === 'string' ? system : undefined,
-      messages,
-    })
+  // Busca na web (server-side) para ancorar sugestões em notícias/contexto atual.
+  // claude-sonnet-4-6 suporta a versão com filtragem dinâmica.
+  const tools = webSearch
+    ? [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }]
+    : undefined
 
-    // Concatena os blocos de texto da resposta.
+  try {
+    // Loop de continuação: com ferramentas server-side, a API pode devolver
+    // stop_reason "pause_turn" se o loop interno atingir o limite de iterações.
+    // Nesse caso, reenviamos a conversa para ela continuar de onde parou.
+    let convo = [...messages]
+    let response
+    let guard = 0
+    do {
+      response = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: Number(maxTokens) || 4000,
+        system: typeof system === 'string' ? system : undefined,
+        messages: convo,
+        ...(tools ? { tools } : {}),
+      })
+
+      if (response.stop_reason === 'pause_turn') {
+        convo = [...convo, { role: 'assistant', content: response.content }]
+      }
+      guard += 1
+    } while (response.stop_reason === 'pause_turn' && guard < 6)
+
+    // Concatena os blocos de texto da resposta final (o JSON vem aqui;
+    // o parser do cliente isola o bloco { ... } se houver texto de busca antes).
     const text = (response.content || [])
       .filter((block) => block.type === 'text')
       .map((block) => block.text)

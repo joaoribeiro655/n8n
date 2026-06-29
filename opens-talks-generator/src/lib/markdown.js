@@ -50,6 +50,18 @@ export function episodioParaMarkdown(ep) {
     linhas.push('')
   }
 
+  if (Array.isArray(ep.posts_aquecimento) && ep.posts_aquecimento.length) {
+    linhas.push('## Posts de aquecimento')
+    ep.posts_aquecimento.forEach((p, i) => {
+      const meta = [p.quando, p.canal].filter(Boolean).join(' · ')
+      linhas.push(`### Post ${i + 1}${meta ? ` — ${meta}` : ''}`)
+      if (p.objetivo) linhas.push(`_${p.objetivo}_`)
+      linhas.push('')
+      linhas.push(p.copy || '')
+      linhas.push('')
+    })
+  }
+
   if (Array.isArray(ep.hashtags) && ep.hashtags.length) {
     linhas.push('## Hashtags')
     linhas.push(ep.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' '))

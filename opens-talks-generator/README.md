@@ -1,6 +1,6 @@
 # Opens Talks Generator
 
-Gerador de webinars para a **Opens** (plataforma B2B de atendimento omnichannel). Gera **temas** de episódios para a série fixa *Opens Talks* e, a partir de um tema, monta o **plano completo do episódio** (agenda, copies, CTA, hashtags) — tudo via **Claude API** (`claude-sonnet-4-6`).
+Gerador de **lives** para a **Opens** (plataforma B2B de atendimento omnichannel). Gera **temas** ancorados no **contexto atual** (notícias, tecnologia, sociedade) para a série fixa *Opens Talks* e, a partir de um tema, monta o **plano completo da live** (agenda, copies, CTA, **3 posts de aquecimento**, hashtags) — tudo via **Claude API** (`claude-sonnet-4-6`).
 
 ## Stack
 
@@ -44,8 +44,12 @@ npm start         # Express serve a API + os estáticos de dist/ na PORT (padrã
 
 ## Telas
 
-1. **Gerador de Temas** — escolha vertical, objetivo, nível de funil e quantidade (3–8). Gera cards de temas, cada um com botão **Montar episódio**.
-2. **Criador de Episódio** — gera o plano completo em JSON e renderiza com **Copiar tudo** e **Exportar Markdown**.
+1. **Gerador de Temas** — escolha vertical, objetivo, nível de funil e quantidade (3–8). Com a opção **"Basear em notícias e tendências atuais"** ligada (padrão), o servidor ativa a **busca na web** da Anthropic para o modelo ancorar cada tema em algo que está em pauta agora (cada card mostra o gancho de atualidade). Cada tema tem botão **Montar episódio**.
+2. **Criador de Episódio** — gera o plano completo da live em JSON: agenda, promessa, CTA, copies (landing/e-mail/LinkedIn), **3 posts de aquecimento** (sequência pré-live) e hashtags. Tem **Copiar tudo** e **Exportar Markdown**.
+
+## Busca na web (contexto atual)
+
+A busca roda **server-side** na infraestrutura da Anthropic (ferramenta `web_search_20260209`) — não depende da rede do app. O proxy trata `pause_turn` (continuação do loop de ferramentas). Requer que a busca na web esteja habilitada para a sua org/API key. Se preferir gerar sem web (mais rápido), desligue o toggle na Tela 1.
 
 ## Identidade visual
 

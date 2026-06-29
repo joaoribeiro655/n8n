@@ -5,18 +5,24 @@
 //  Aqui montamos o system prompt + messages e enviamos para o nosso
 //  proxy Express em /api/messages, que injeta a chave e usa o modelo
 //  claude-sonnet-4-6. O proxy devolve o texto cru gerado pela API.
+//
+//  Quando `webSearch` é true, o proxy ativa a ferramenta de busca na
+//  web (server-side) para o modelo ancorar as sugestões em notícias,
+//  tecnologia e contexto atual da sociedade.
 // ============================================================
+
+import { dataDeHoje } from './opensContext.js'
 
 /**
  * Faz a chamada ao proxy. `system` e `messages` seguem o formato da
  * Messages API da Anthropic. Como a API não tem memória, todo o contexto
  * necessário precisa ser enviado em cada chamada.
  */
-async function callClaude({ system, messages, maxTokens }) {
+async function callClaude({ system, messages, maxTokens, webSearch }) {
   const res = await fetch('/api/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, messages, maxTokens }),
+    body: JSON.stringify({ system, messages, maxTokens, webSearch: Boolean(webSearch) }),
   })
 
   if (!res.ok) {
@@ -36,8 +42,9 @@ async function callClaude({ system, messages, maxTokens }) {
 
 /**
  * Faz parse seguro de uma resposta que deveria ser JSON puro.
- * Defende contra cercas de markdown (```json ... ```) e preâmbulos,
- * extraindo o maior bloco { ... } encontrado.
+ * Defende contra cercas de markdown (```json ... ```), preâmbulos e
+ * texto que o modelo escreve antes/depois de buscar na web, extraindo
+ * o maior bloco { ... } encontrado.
  */
 function safeParseJson(raw) {
   if (!raw || typeof raw !== 'string') {
@@ -79,28 +86,38 @@ function safeParseJson(raw) {
 
 /**
  * TELA 1 — gera uma lista de temas para a série Opens Talks.
- * Retorna: { temas: [{ titulo, angulo, dor_principal, publico_alvo, gancho_de_atracao }] }
+ * Retorna: { temas: [{ titulo, angulo, dor_principal, publico_alvo, gancho_de_atracao, contexto_atual }] }
  */
-export async function gerarTemas({ vertical, objetivo, nivelFunil, quantidade }, systemContext) {
-  const userPrompt = `Gere ${quantidade} temas de webinar para a série "Opens Talks".
+export async function gerarTemas(
+  { vertical, objetivo, nivelFunil, quantidade, webSearch = true },
+  systemContext,
+) {
+  const userPrompt = `Hoje é ${dataDeHoje()}. Gere ${quantidade} temas de LIVE para a série "Opens Talks".
+
+${
+  webSearch
+    ? `ANTES de sugerir, pesquise na web notícias e tendências RECENTES (últimas semanas) sobre tecnologia, IA, comportamento do consumidor, economia e atendimento/CX que sejam relevantes para a vertical "${vertical}". Ancore cada tema em algo que está em pauta AGORA.`
+    : `Conecte cada tema ao contexto atual de sociedade, tecnologia e atendimento/CX.`
+}
 
 PARÂMETROS:
 - Vertical: ${vertical}
-- Objetivo do webinar: ${objetivo}
+- Objetivo da live: ${objetivo}
 - Nível de funil: ${nivelFunil}
 - Quantidade de temas: ${quantidade}
 
-Cada tema deve atacar uma dor real de atendimento/CX coerente com a vertical, o objetivo e o nível de funil escolhidos.
+Cada tema deve atacar uma dor real de atendimento/CX coerente com a vertical, o objetivo e o nível de funil escolhidos, e ter conexão clara com o momento atual.
 
 Responda SOMENTE com JSON neste formato exato:
 {
   "temas": [
     {
-      "titulo": "string — título chamativo do episódio",
+      "titulo": "string — título chamativo da live",
       "angulo": "string — o ângulo/abordagem editorial do tema",
       "dor_principal": "string — a dor central que o tema resolve",
-      "publico_alvo": "string — quem é o público ideal deste episódio",
-      "gancho_de_atracao": "string — gancho para atrair inscrições"
+      "publico_alvo": "string — quem é o público ideal desta live",
+      "gancho_de_atracao": "string — gancho para atrair inscrições",
+      "contexto_atual": "string — a notícia/tendência atual que justifica o tema agora"
     }
   ]
 }`
@@ -108,7 +125,8 @@ Responda SOMENTE com JSON neste formato exato:
   const raw = await callClaude({
     system: systemContext,
     messages: [{ role: 'user', content: userPrompt }],
-    maxTokens: 4000,
+    maxTokens: 5000,
+    webSearch,
   })
 
   const parsed = safeParseJson(raw)
@@ -119,11 +137,20 @@ Responda SOMENTE com JSON neste formato exato:
 }
 
 /**
- * TELA 2 — monta o plano completo de um episódio a partir de um tema escolhido.
+ * TELA 2 — monta o plano completo de uma live a partir de um tema escolhido.
  * Reenviamos os parâmetros da Tela 1 + o tema selecionado (a API não tem memória).
+ * Inclui 3 posts de aquecimento para promover a live antes dela acontecer.
  */
 export async function montarEpisodio({ tema, contextoGeracao }, systemContext) {
-  const userPrompt = `Monte o PLANO COMPLETO de um episódio da série "Opens Talks" a partir do tema escolhido abaixo.
+  const webSearch = contextoGeracao?.webSearch !== false
+
+  const userPrompt = `Hoje é ${dataDeHoje()}. Monte o PLANO COMPLETO de uma LIVE da série "Opens Talks" a partir do tema escolhido abaixo.
+
+${
+  webSearch
+    ? 'Se útil, pesquise na web dados/notícias recentes para deixar os ganchos e copies conectados ao momento atual.'
+    : ''
+}
 
 CONTEXTO DA GERAÇÃO ORIGINAL DOS TEMAS:
 - Vertical: ${contextoGeracao.vertical}
@@ -136,13 +163,17 @@ TEMA ESCOLHIDO:
 - Dor principal: ${tema.dor_principal}
 - Público-alvo: ${tema.publico_alvo}
 - Gancho de atração: ${tema.gancho_de_atracao}
+- Contexto atual: ${tema.contexto_atual || '—'}
+
+Lembre-se: é uma LIVE (transmissão ao vivo), com interação da audiência.
+Inclua 3 POSTS DE AQUECIMENTO para serem publicados ANTES da live, em sequência (ex.: 5 dias antes, 2 dias antes, no dia), aumentando a expectativa.
 
 Responda SOMENTE com JSON neste formato exato:
 {
   "titulo_final": "string",
   "subtitulo": "string",
-  "duracao_sugerida": "string (ex: 45 minutos)",
-  "formato": "string (palestra solo / entrevista / painel)",
+  "duracao_sugerida": "string (ex: 45 minutos ao vivo)",
+  "formato": "string (palestra solo ao vivo / entrevista ao vivo / painel ao vivo)",
   "convidado_sugerido": "string — perfil ideal do convidado, NÃO um nome real",
   "agenda": [
     { "bloco": "string", "minutos": 0, "descricao": "string" }
@@ -152,18 +183,27 @@ Responda SOMENTE com JSON neste formato exato:
   "copy_landing_page": "string — copy pronta para a landing page de inscrição",
   "copy_email_convite": "string — copy pronta para o e-mail de convite",
   "copy_linkedin": "string — copy pronta para post no LinkedIn",
+  "posts_aquecimento": [
+    {
+      "quando": "string — quando publicar (ex: 5 dias antes)",
+      "canal": "string — rede/canal sugerido (ex: LinkedIn)",
+      "objetivo": "string — o que esse post deve provocar",
+      "copy": "string — texto pronto do post"
+    }
+  ],
   "hashtags": ["string"]
 }`
 
   const raw = await callClaude({
     system: systemContext,
     messages: [{ role: 'user', content: userPrompt }],
-    maxTokens: 5000,
+    maxTokens: 6000,
+    webSearch,
   })
 
   const parsed = safeParseJson(raw)
   if (!parsed || !parsed.titulo_final) {
-    throw new Error('JSON retornado não contém o plano de episódio esperado.')
+    throw new Error('JSON retornado não contém o plano de live esperado.')
   }
   return parsed
 }
