@@ -21,6 +21,23 @@ export function Select({ label, value, onChange, options, disabled }) {
   )
 }
 
+export function Textarea({ label, value, onChange, placeholder, rows = 2, disabled, hint }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-[var(--opens-text-muted)]">{label}</span>
+      <textarea
+        value={value}
+        rows={rows}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className="resize-y rounded-lg border border-[var(--opens-border)] bg-[var(--opens-surface-2)] px-3 py-2.5 text-[var(--opens-text)] outline-none transition placeholder:text-[var(--opens-text-muted)]/60 focus:border-[var(--opens-accent)] disabled:opacity-50"
+      />
+      {hint && <span className="text-xs text-[var(--opens-text-muted)]">{hint}</span>}
+    </label>
+  )
+}
+
 export function NumberSelect({ label, value, onChange, min, max, disabled }) {
   const options = []
   for (let i = min; i <= max; i++) options.push(i)

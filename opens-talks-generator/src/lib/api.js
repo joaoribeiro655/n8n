@@ -89,24 +89,34 @@ function safeParseJson(raw) {
  * Retorna: { temas: [{ titulo, angulo, dor_principal, publico_alvo, gancho_de_atracao, contexto_atual }] }
  */
 export async function gerarTemas(
-  { vertical, objetivo, nivelFunil, quantidade, webSearch = true },
+  { tema = '', intuito = '', vertical, objetivo, nivelFunil, quantidade, webSearch = true },
   systemContext,
 ) {
+  // Bloco com o que o organizador escreveu (texto livre) — quando preenchido,
+  // é a instrução mais importante e deve guiar todas as sugestões.
+  const blocoOrganizador =
+    tema.trim() || intuito.trim()
+      ? `DESCRIÇÃO DO ORGANIZADOR (PRIORIZE ISTO):
+${tema.trim() ? `- Tema desejado: ${tema.trim()}` : ''}
+${intuito.trim() ? `- Intuito da live: ${intuito.trim()}` : ''}
+`
+      : ''
+
   const userPrompt = `Hoje é ${dataDeHoje()}. Gere ${quantidade} temas de LIVE para a série "Opens Talks".
 
-${
+${blocoOrganizador}${
   webSearch
-    ? `ANTES de sugerir, pesquise na web notícias e tendências RECENTES (últimas semanas) sobre tecnologia, IA, comportamento do consumidor, economia e atendimento/CX que sejam relevantes para a vertical "${vertical}". Ancore cada tema em algo que está em pauta AGORA.`
+    ? `ANTES de sugerir, pesquise na web notícias e tendências RECENTES (últimas semanas) sobre tecnologia, IA, comportamento do consumidor, economia e atendimento/CX que sejam relevantes para o tema/intuito acima e para a vertical "${vertical}". Ancore cada tema em algo que está em pauta AGORA.`
     : `Conecte cada tema ao contexto atual de sociedade, tecnologia e atendimento/CX.`
 }
 
-PARÂMETROS:
+PARÂMETROS DE APOIO (refinam, mas não sobrepõem a descrição do organizador):
 - Vertical: ${vertical}
 - Objetivo da live: ${objetivo}
 - Nível de funil: ${nivelFunil}
 - Quantidade de temas: ${quantidade}
 
-Cada tema deve atacar uma dor real de atendimento/CX coerente com a vertical, o objetivo e o nível de funil escolhidos, e ter conexão clara com o momento atual.
+Cada tema deve respeitar a descrição do organizador (quando houver), atacar uma dor real de atendimento/CX coerente com a vertical, o objetivo e o nível de funil, e ter conexão clara com o momento atual.
 
 Responda SOMENTE com JSON neste formato exato:
 {
@@ -153,6 +163,8 @@ ${
 }
 
 CONTEXTO DA GERAÇÃO ORIGINAL DOS TEMAS:
+${contextoGeracao.tema?.trim() ? `- Tema desejado pelo organizador: ${contextoGeracao.tema.trim()}` : ''}
+${contextoGeracao.intuito?.trim() ? `- Intuito da live: ${contextoGeracao.intuito.trim()}` : ''}
 - Vertical: ${contextoGeracao.vertical}
 - Objetivo: ${contextoGeracao.objetivo}
 - Nível de funil: ${contextoGeracao.nivelFunil}

@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Select, NumberSelect, Button, Spinner, ErrorBanner } from './ui.jsx'
+import { Select, NumberSelect, Textarea, Button, Spinner, ErrorBanner } from './ui.jsx'
 import { gerarTemas } from '../lib/api.js'
 import { OPENS_SYSTEM_CONTEXT, VERTICAIS, OBJETIVOS, NIVEIS_FUNIL } from '../lib/opensContext.js'
 
 // TELA 1 — Gerador de Temas.
 export default function ThemeGenerator({ onMontarEpisodio }) {
   // Estado apenas em useState (sem localStorage).
+  const [tema, setTema] = useState('') // descrição livre do tema (opcional)
+  const [intuito, setIntuito] = useState('') // intuito/objetivo da live, em texto livre
   const [vertical, setVertical] = useState(VERTICAIS[0])
   const [objetivo, setObjetivo] = useState(OBJETIVOS[0])
   const [nivelFunil, setNivelFunil] = useState(NIVEIS_FUNIL[0])
@@ -16,13 +18,16 @@ export default function ThemeGenerator({ onMontarEpisodio }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Contexto que viaja junto para a Tela 2 (a API não tem memória).
+  const contexto = { tema, intuito, vertical, objetivo, nivelFunil, webSearch: usarWeb }
+
   // ===== CHAMADA DE API: gera os temas =====
   async function handleGerar() {
     setLoading(true)
     setError('')
     try {
       const resultado = await gerarTemas(
-        { vertical, objetivo, nivelFunil, quantidade, webSearch: usarWeb },
+        { tema, intuito, vertical, objetivo, nivelFunil, quantidade, webSearch: usarWeb },
         OPENS_SYSTEM_CONTEXT,
       )
       setTemas(resultado)
@@ -39,10 +44,30 @@ export default function ThemeGenerator({ onMontarEpisodio }) {
       <section className="rounded-2xl border border-[var(--opens-border)] bg-[var(--opens-surface)] p-6">
         <h2 className="text-lg font-bold">Gerador de Temas</h2>
         <p className="mt-1 text-sm text-[var(--opens-text-muted)]">
-          Defina os parâmetros e gere ideias de episódios para a série Opens Talks.
+          Escreva, com suas palavras, o tema e o intuito da live. Os campos abaixo
+          ajudam a refinar — gere quantas vezes quiser.
         </p>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Textarea
+            label="Tema (mais ou menos)"
+            value={tema}
+            onChange={setTema}
+            disabled={loading}
+            rows={3}
+            placeholder="Ex.: como usar IA no WhatsApp para reduzir tempo de primeira resposta sem perder o toque humano"
+          />
+          <Textarea
+            label="Intuito da live"
+            value={intuito}
+            onChange={setIntuito}
+            disabled={loading}
+            rows={3}
+            placeholder="Ex.: gerar leads qualificados de clínicas e mostrar a Opens como referência em automação de atendimento"
+          />
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Select label="Vertical" value={vertical} onChange={setVertical} options={VERTICAIS} disabled={loading} />
           <Select label="Objetivo do webinar" value={objetivo} onChange={setObjetivo} options={OBJETIVOS} disabled={loading} />
           <Select label="Nível de funil" value={nivelFunil} onChange={setNivelFunil} options={NIVEIS_FUNIL} disabled={loading} />
@@ -84,9 +109,7 @@ export default function ThemeGenerator({ onMontarEpisodio }) {
               <TemaCard
                 key={i}
                 tema={tema}
-                onMontar={() =>
-                  onMontarEpisodio(tema, { vertical, objetivo, nivelFunil, webSearch: usarWeb })
-                }
+                onMontar={() => onMontarEpisodio(tema, contexto)}
               />
             ))}
           </div>
