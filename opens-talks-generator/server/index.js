@@ -209,15 +209,30 @@ export function createApp({ serveStatic = true } = {}) {
   return app
 }
 
-// Sobe o servidor e resolve com a porta efetiva (porta 0 = porta livre do SO).
-export function startServer({ port = process.env.PORT || 8787, host = '127.0.0.1' } = {}) {
+// Sobe o servidor e resolve com a porta efetiva. Quando uma porta específica é
+// pedida e está ocupada, tenta as próximas (até maxTries) — isso mantém a origem
+// estável no app desktop (a sessão do Growth no localStorage é por origem).
+export function startServer({ port = process.env.PORT || 8787, host = '127.0.0.1', maxTries = 30 } = {}) {
   const app = createApp()
-  return new Promise((resolve) => {
-    const server = app.listen(port, host, () => {
-      const actualPort = server.address().port
-      console.log(`[Opens Talks] Proxy em http://${host}:${actualPort} (modelo: ${MODEL})`)
-      resolve({ server, port: actualPort, host })
-    })
+  return new Promise((resolve, reject) => {
+    let tentativa = 0
+    const tentar = (p) => {
+      const server = app.listen(p, host)
+      server.once('listening', () => {
+        const actualPort = server.address().port
+        console.log(`[Opens Talks] Proxy em http://${host}:${actualPort} (modelo: ${MODEL})`)
+        resolve({ server, port: actualPort, host })
+      })
+      server.once('error', (err) => {
+        if (err.code === 'EADDRINUSE' && p !== 0 && tentativa < maxTries) {
+          tentativa += 1
+          tentar(p + 1)
+        } else {
+          reject(err)
+        }
+      })
+    }
+    tentar(Number(port))
   })
 }
 

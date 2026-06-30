@@ -117,6 +117,32 @@ export GH_TOKEN="ghp_..."
 1. **Gerador de Temas** — escolha vertical, objetivo, nível de funil e quantidade (3–8). Com a opção **"Basear em notícias e tendências atuais"** ligada (padrão), o servidor ativa a **busca na web** da Anthropic para o modelo ancorar cada tema em algo que está em pauta agora (cada card mostra o gancho de atualidade). Cada tema tem botão **Montar episódio**.
 2. **Criador de Episódio** — gera o plano completo da live em JSON: agenda, promessa, CTA, copies (landing/e-mail/LinkedIn), **3 posts de aquecimento** (sequência pré-live) e hashtags. Tem **Copiar tudo** e **Exportar Markdown**.
 
+## Modos: Opens Talks (mercado) e ELGA (clientes)
+
+No topo há um seletor de modo:
+
+- **Opens Talks · mercado** — o gerador aberto (temas + lives para o mercado).
+- **ELGA · clientes** — temas "em alta" para o programa **ELGA** (educacional, só
+  para clientes da base), gerados a partir do que os clientes estão de fato
+  comentando/relatando no **Growth**.
+
+### Growth (Supabase)
+
+O **Growth** é a plataforma de dados da Opens (backend 100% Supabase: PostgreSQL +
+Auth + RLS). O app conecta direto via `supabase-js` com a **anon key pública**
+(protegida por RLS) e o seu **login (e-mail/senha)** — você só lê o que sua conta
+tem permissão. Clique em **Growth** no topo para entrar. A sessão fica salva
+(localStorage) para os próximos usos.
+
+No modo ELGA, o app puxa os **assuntos recorrentes** dos clientes numa janela
+recente e os usa como insumo para os temas. O mapeamento de quais tabelas/colunas
+representam "assunto/suporte" fica em `src/lib/growth.js` (bloco `CONFIG_INSUMOS`)
+— hoje lê `activities` e `whatsapp_template_dispatches`; ajuste ali se o dado vier
+de outra tabela. O app mostra de forma transparente o que leu (quantidade por
+tabela + chips de assuntos) antes de gerar.
+
+> A anon key é pública por design; **nunca** use a service_role no cliente.
+
 ## Busca na web (contexto atual)
 
 A busca roda **server-side** na infraestrutura da Anthropic (ferramenta `web_search_20260209`) — não depende da rede do app. O proxy trata `pause_turn` (continuação do loop de ferramentas). Requer que a busca na web esteja habilitada para a sua org/API key. Se preferir gerar sem web (mais rápido), desligue o toggle na Tela 1.

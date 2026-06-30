@@ -147,6 +147,65 @@ Responda SOMENTE com JSON neste formato exato:
 }
 
 /**
+ * ELGA — gera temas "em alta" a partir dos assuntos reais dos clientes (Growth).
+ * `insumos` vem de puxarInsumosElga() (lib/growth.js): { topAssuntos:[{assunto,ocorrencias}] }.
+ * Retorna a mesma forma de tema dos cards (+ campo baseado_em).
+ */
+export async function gerarTemasElga(
+  { insumos, quantidade = 5, foco = '', webSearch = true },
+  systemContext,
+) {
+  const lista = (insumos?.topAssuntos || [])
+    .map((a) => `- ${a.assunto} (${a.ocorrencias}x)`)
+    .join('\n')
+
+  if (!lista) {
+    throw new Error('Não há assuntos suficientes do Growth para gerar temas. Verifique sua conexão/permissões.')
+  }
+
+  const userPrompt = `Hoje é ${dataDeHoje()}. Gere ${quantidade} temas de conteúdo/live "em alta" para o ELGA (programa educacional para CLIENTES da Opens).
+
+Os temas devem partir DIRETAMENTE dos assuntos abaixo — eles foram extraídos de interações reais com clientes (suporte, abordagens e atividades) nos últimos ${insumos?.janelaDias || 90} dias. Priorize os mais recorrentes e que rendem boa aula prática.
+
+ASSUNTOS RECORRENTES DOS CLIENTES (dados do Growth):
+${lista}
+${foco.trim() ? `\nFOCO ADICIONAL DO ORGANIZADOR: ${foco.trim()}` : ''}
+${
+  webSearch
+    ? '\nSe ajudar, pesquise na web boas práticas/novidades recentes ligadas a esses assuntos para enriquecer os temas.'
+    : ''
+}
+
+Responda SOMENTE com JSON neste formato exato:
+{
+  "temas": [
+    {
+      "titulo": "string — título didático e chamativo",
+      "angulo": "string — abordagem prática do tema",
+      "dor_principal": "string — a dor do cliente que o tema resolve",
+      "publico_alvo": "string — qual perfil de cliente da base aproveita mais",
+      "gancho_de_atracao": "string — gancho para o cliente participar",
+      "baseado_em": "string — quais assuntos do Growth originaram este tema",
+      "contexto_atual": "string — conexão com o momento atual (ou vazio)"
+    }
+  ]
+}`
+
+  const raw = await callClaude({
+    system: systemContext,
+    messages: [{ role: 'user', content: userPrompt }],
+    maxTokens: 5000,
+    webSearch,
+  })
+
+  const parsed = safeParseJson(raw)
+  if (!parsed || !Array.isArray(parsed.temas)) {
+    throw new Error('JSON retornado não contém a lista de temas esperada.')
+  }
+  return parsed.temas
+}
+
+/**
  * TELA 2 — monta o plano completo de uma live a partir de um tema escolhido.
  * Reenviamos os parâmetros da Tela 1 + o tema selecionado (a API não tem memória).
  * Inclui 3 posts de aquecimento para promover a live antes dela acontecer.

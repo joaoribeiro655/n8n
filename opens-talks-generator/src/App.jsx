@@ -1,21 +1,27 @@
 import { useEffect, useState } from 'react'
 import ThemeGenerator from './components/ThemeGenerator.jsx'
+import ElgaTrends from './components/ElgaTrends.jsx'
 import EpisodeBuilder from './components/EpisodeBuilder.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
+import GrowthModal from './components/GrowthModal.jsx'
 import { Button } from './components/ui.jsx'
 import { getStatus } from './lib/config.js'
+import { sessaoGrowth, aoMudarAuthGrowth } from './lib/growth.js'
 
-// App raiz — controla a navegação entre Tela 1 (temas) e Tela 2 (episódio)
-// e a tela de Configuração (chave da Anthropic). Estado só em useState.
+// App raiz — alterna entre os modos Opens Talks (mercado) e ELGA (clientes),
+// e abre a Tela 2 (episódio). Configuração da Anthropic e conexão ao Growth.
 export default function App() {
-  const [tela, setTela] = useState('temas') // 'temas' | 'episodio'
+  const [modo, setModo] = useState('opens') // 'opens' | 'elga'
+  const [tela, setTela] = useState('lista') // 'lista' | 'episodio'
   const [temaSelecionado, setTemaSelecionado] = useState(null)
   const [contextoGeracao, setContextoGeracao] = useState(null)
 
-  const [status, setStatus] = useState(null) // { hasKey, source } | null
+  const [status, setStatus] = useState(null) // chave Anthropic
   const [showSettings, setShowSettings] = useState(false)
 
-  // Consulta o status da chave no servidor (sem nunca receber a chave em si).
+  const [growthSession, setGrowthSession] = useState(null)
+  const [showGrowth, setShowGrowth] = useState(false)
+
   async function atualizarStatus() {
     try {
       const s = await getStatus()
@@ -27,11 +33,20 @@ export default function App() {
     }
   }
 
-  // Ao abrir o app: checa o status. Se não houver chave, abre a Configuração.
+  async function atualizarGrowth() {
+    const s = await sessaoGrowth()
+    setGrowthSession(s)
+    return s
+  }
+
   useEffect(() => {
     atualizarStatus().then((s) => {
       if (!s?.hasKey) setShowSettings(true)
     })
+    atualizarGrowth()
+    // mantém a sessão do Growth em dia (refresh/expiração)
+    const unsub = aoMudarAuthGrowth((session) => setGrowthSession(session))
+    return unsub
   }, [])
 
   function abrirEpisodio(tema, contexto) {
@@ -41,9 +56,14 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function voltarParaTemas() {
-    setTela('temas')
+  function voltarParaLista() {
+    setTela('lista')
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function trocarModo(novo) {
+    setModo(novo)
+    setTela('lista')
   }
 
   const semChave = status && !status.hasKey
@@ -51,7 +71,7 @@ export default function App() {
   return (
     <div className="min-h-full">
       <header className="border-b border-[var(--opens-border)] bg-[var(--opens-surface)]/60 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--opens-accent)]">
               <span className="h-3.5 w-3.5 rounded-full border-2 border-[var(--opens-accent-2)]" />
@@ -65,17 +85,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Indicador de status da chave */}
-            {status && (
-              <span className="hidden items-center gap-1.5 text-xs text-[var(--opens-text-muted)] sm:inline-flex">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    status.hasKey ? 'bg-[var(--opens-accent-2)]' : 'bg-[var(--opens-danger)]'
-                  }`}
-                />
-                {status.hasKey ? 'conectado' : 'sem chave'}
-              </span>
-            )}
+            {/* Conexão Growth */}
+            <button
+              type="button"
+              onClick={() => setShowGrowth(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--opens-border)] bg-[var(--opens-surface-2)] px-3 py-2 text-sm font-medium text-[var(--opens-text)] transition hover:border-[var(--opens-accent)]"
+            >
+              <span className={`h-2 w-2 rounded-full ${growthSession ? 'bg-[var(--opens-accent-2)]' : 'bg-[var(--opens-text-muted)]'}`} />
+              Growth
+            </button>
             <button
               type="button"
               onClick={() => setShowSettings(true)}
@@ -85,9 +103,20 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        {/* Seletor de modo */}
+        <div className="mx-auto max-w-5xl px-4 pb-4 sm:px-6">
+          <div className="inline-flex rounded-lg border border-[var(--opens-border)] bg-[var(--opens-surface-2)] p-1">
+            <ModeButton ativo={modo === 'opens'} onClick={() => trocarModo('opens')}>
+              Opens Talks · mercado
+            </ModeButton>
+            <ModeButton ativo={modo === 'elga'} onClick={() => trocarModo('elga')}>
+              ELGA · clientes
+            </ModeButton>
+          </div>
+        </div>
       </header>
 
-      {/* Banner quando ainda não há chave configurada */}
       {semChave && (
         <div className="border-b border-[var(--opens-danger)]/40 bg-[var(--opens-danger)]/10">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -100,27 +129,53 @@ export default function App() {
       )}
 
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        {tela === 'temas' && <ThemeGenerator onMontarEpisodio={abrirEpisodio} />}
-        {tela === 'episodio' && (
+        {tela === 'episodio' ? (
           <EpisodeBuilder
             tema={temaSelecionado}
             contextoGeracao={contextoGeracao}
-            onVoltar={voltarParaTemas}
+            onVoltar={voltarParaLista}
+          />
+        ) : modo === 'opens' ? (
+          <ThemeGenerator onMontarEpisodio={abrirEpisodio} />
+        ) : (
+          <ElgaTrends
+            growthSession={growthSession}
+            onConnectGrowth={() => setShowGrowth(true)}
+            onMontarEpisodio={abrirEpisodio}
           />
         )}
       </main>
 
       <footer className="mx-auto max-w-5xl px-4 py-8 text-center text-xs text-[var(--opens-text-muted)] sm:px-6">
-        Gerado via Claude API (claude-sonnet-4-6) · a chave fica somente no servidor.
+        Gerado via Claude API (claude-sonnet-4-6) · chave no servidor · dados do Growth via Supabase (RLS).
       </footer>
 
       {showSettings && (
-        <SettingsModal
-          status={status}
-          onClose={() => setShowSettings(false)}
-          onChanged={atualizarStatus}
+        <SettingsModal status={status} onClose={() => setShowSettings(false)} onChanged={atualizarStatus} />
+      )}
+      {showGrowth && (
+        <GrowthModal
+          session={growthSession}
+          onClose={() => setShowGrowth(false)}
+          onChanged={atualizarGrowth}
         />
       )}
     </div>
+  )
+}
+
+function ModeButton({ ativo, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+        ativo
+          ? 'bg-[var(--opens-accent)] text-white'
+          : 'text-[var(--opens-text-muted)] hover:text-[var(--opens-text)]'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

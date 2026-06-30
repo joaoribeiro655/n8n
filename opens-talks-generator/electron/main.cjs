@@ -24,8 +24,9 @@ async function bootServer() {
   const serverEntry = path.join(__dirname, '..', 'server', 'index.js')
   const { startServer } = await import(pathToFileURL(serverEntry).href)
 
-  // Porta 0 = o SO escolhe uma porta livre (evita conflito com outros apps).
-  const { port } = await startServer({ port: 0, host: '127.0.0.1' })
+  // Porta fixa preferida (com fallback): mantém a origem estável entre
+  // aberturas, para a sessão do Growth (Supabase) persistir no localStorage.
+  const { port } = await startServer({ port: 47615, host: '127.0.0.1' })
   serverPort = port
 }
 
