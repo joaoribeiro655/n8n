@@ -10,7 +10,10 @@ const { listByCnae, enrichByCnpj } = require("./sources/cnpj");
 const { enrichLinkedin } = require("./sources/linkedin");
 const { createSearcher } = require("./sources/websearch");
 const { bestGuessEmail, domainFromUrl } = require("./sources/email");
+const wa = require("./sources/whatsapp");
 const { buildCsv } = require("./csv");
+
+let waStop = false;
 
 let mainWindow = null;
 
@@ -185,5 +188,45 @@ ipcMain.handle("export-csv", async (_event, leads) => {
 
 ipcMain.handle("open-external", async (_event, url) => {
   if (url) await shell.openExternal(url);
+  return { ok: true };
+});
+
+// ---- WhatsApp (API não oficial via Baileys) ----
+ipcMain.handle("wa-connect", async (event) => {
+  try {
+    const authDir = path.join(app.getPath("userData"), "wa-auth");
+    const status = await wa.connect({
+      authDir,
+      onUpdate: (u) => event.sender.send("wa-update", u),
+    });
+    return { ok: true, status };
+  } catch (err) {
+    return { ok: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle("wa-status", async () => ({ ok: true, status: wa.getStatus() }));
+
+ipcMain.handle("wa-send", async (event, payload) => {
+  waStop = false;
+  try {
+    const summary = await wa.sendBulk({
+      ...payload,
+      onProgress: (p) => event.sender.send("wa-progress", p),
+      isStopped: () => waStop,
+    });
+    return { ok: true, ...summary };
+  } catch (err) {
+    return { ok: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle("wa-stop", async () => {
+  waStop = true;
+  return { ok: true };
+});
+
+ipcMain.handle("wa-logout", async () => {
+  await wa.logout();
   return { ok: true };
 });

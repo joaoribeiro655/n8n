@@ -73,6 +73,33 @@ para a pasta **Aplicativos**.
 Nas linhas: o nome da empresa abre no Google Maps, o site/decisor abrem no
 navegador.
 
+## Disparar no WhatsApp (aba 2) — API não oficial
+
+A aba **"Disparar WhatsApp"** conecta o seu WhatsApp por **QR code** (igual ao
+WhatsApp Web, via Baileys) e envia as mensagens para os leads coletados.
+
+**Como usar:**
+1. Colete os leads na aba 1 (precisam ter telefone/WhatsApp).
+2. Na aba 2, clique **Conectar WhatsApp** e escaneie o QR
+   (WhatsApp do celular → *Aparelhos conectados* → *Conectar aparelho*).
+3. Escreva a mensagem usando variáveis: `{empresa}`, `{nome}`, `{cidade}`, `{cargo}`.
+4. Ajuste o **ritmo** (intervalo entre mensagens) e o **limite por sessão**.
+5. Clique **Enviar para a lista**. Dá para **Parar** a qualquer momento.
+
+**Proteções embutidas:** confere se o número tem WhatsApp, intervalos aleatórios,
+limite por sessão e não reenvia para quem já recebeu.
+
+> 🚨 **LEIA:** automação não oficial **viola os Termos do WhatsApp** e disparo
+> frio em massa tem **alto risco de BANIR o número**. Recomendações sérias:
+> - use um **número secundário/dedicado**, nunca o principal do negócio;
+> - **aqueça** o chip (uso normal por alguns dias antes);
+> - volume **baixo** (dezenas/dia, não centenas), intervalos longos;
+> - mensagem **personalizada** e com opção de **opt-out** ("responda SAIR");
+> - respeite a **LGPD** (base legal para contato B2B, atender pedidos de remoção).
+>
+> O app dá as ferramentas de moderação, mas o risco de bloqueio é inerente ao
+> método. Use com responsabilidade.
+
 ## Estrutura
 
 ```
@@ -86,6 +113,9 @@ src/
     website.js         # e-mail/WhatsApp/Instagram do site (fetch + regex)
     cnpj.js            # Casa dos Dados (lista) + BrasilAPI (enriquece)
     linkedin.js        # acha decisores via busca web (DuckDuckGo), sem login
+    websearch.js       # busca na web pelo Chromium do Electron (sem bloqueio)
+    email.js           # adivinha o e-mail provável do decisor (+ checagem MX)
+    whatsapp.js        # disparo via API não oficial (Baileys + QR)
 renderer/              # a tela (HTML/CSS/JS)
 build/
   make-icon.mjs        # gera o ícone 🎯 (build/icon.png)

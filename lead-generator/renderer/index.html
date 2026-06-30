@@ -9,11 +9,14 @@
   <body>
     <header class="topbar">
       <div class="logo"><span class="dot">🎯</span> Gerador de Leads</div>
-      <div class="subtitle">Prospecção para disparos frios — Google Maps · Sites · CNPJ · LinkedIn</div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="coletar">1 · Coletar leads</button>
+        <button class="tab" data-tab="whats">2 · Disparar WhatsApp</button>
+      </nav>
     </header>
 
-    <main class="layout">
-      <!-- Painel de filtros -->
+    <!-- ABA 1: COLETAR -->
+    <main class="layout tabpane" id="pane-coletar">
       <section class="panel">
         <h2>Filtros</h2>
 
@@ -43,7 +46,6 @@
         <div id="status" class="status"></div>
       </section>
 
-      <!-- Resultados -->
       <section class="results">
         <div class="results-head">
           <h2>Resultados</h2>
@@ -67,6 +69,61 @@
             </tbody>
           </table>
         </div>
+      </section>
+    </main>
+
+    <!-- ABA 2: WHATSAPP -->
+    <main class="layout tabpane hidden" id="pane-whats">
+      <section class="panel">
+        <h2>Conexão</h2>
+        <p class="warn">
+          ⚠️ Automação não oficial viola os termos do WhatsApp e disparo frio em massa
+          pode <strong>banir o número</strong>. Use um <strong>número secundário</strong>,
+          em volume baixo e com mensagens personalizadas.
+        </p>
+
+        <div id="wa-status" class="status">Status: desconectado</div>
+        <div id="wa-qr-box" class="qr-box hidden">
+          <p class="muted">Abra o WhatsApp no celular → <strong>Aparelhos conectados</strong> → <strong>Conectar aparelho</strong> e escaneie:</p>
+          <img id="wa-qr" alt="QR Code" />
+        </div>
+
+        <button id="wa-connect" class="btn-primary">Conectar WhatsApp</button>
+        <button id="wa-logout" class="btn-ghost">Desconectar</button>
+
+        <h2 style="margin-top:22px">Ritmo (anti-bloqueio)</h2>
+        <div class="grid2">
+          <div>
+            <label class="label">Intervalo mín. (seg)</label>
+            <input id="wa-min" class="input" type="number" min="5" value="30" />
+          </div>
+          <div>
+            <label class="label">Intervalo máx. (seg)</label>
+            <input id="wa-max" class="input" type="number" min="10" value="90" />
+          </div>
+        </div>
+        <label class="label">Limite por sessão</label>
+        <input id="wa-daily" class="input" type="number" min="1" value="40" />
+      </section>
+
+      <section class="results">
+        <div class="results-head">
+          <h2>Mensagem</h2>
+          <span id="wa-count" class="muted">0 leads com número</span>
+        </div>
+
+        <label class="label">Texto (use {empresa}, {nome}, {cidade}, {cargo})</label>
+        <textarea id="wa-template" class="input" rows="6" placeholder="Olá! Tudo bem? Vi a {empresa} aqui em {cidade} e queria mostrar uma ferramenta que cria as artes de marketing da loja automaticamente. Posso te enviar um exemplo rápido?
+
+Para sair, responda SAIR."></textarea>
+
+        <div class="row-actions">
+          <button id="wa-send" class="btn-primary" disabled>Enviar para a lista</button>
+          <button id="wa-stop" class="btn-ghost" disabled>Parar</button>
+        </div>
+
+        <div id="wa-progress" class="status"></div>
+        <div id="wa-log" class="walog"></div>
       </section>
     </main>
 

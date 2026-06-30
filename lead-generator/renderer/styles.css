@@ -193,3 +193,79 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+/* ---- Abas ---- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-left: 24px;
+}
+.tab {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 9px;
+  padding: 7px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--sky);
+  border-color: rgba(56, 189, 248, 0.5);
+}
+.hidden {
+  display: none !important;
+}
+
+/* ---- WhatsApp ---- */
+.warn {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.qr-box {
+  text-align: center;
+  margin: 10px 0;
+}
+.qr-box img {
+  width: 240px;
+  height: 240px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.row-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.row-actions .btn-primary,
+.row-actions .btn-ghost {
+  margin-top: 0;
+  width: auto;
+  flex: 1;
+}
+.walog {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  height: 220px;
+  overflow: auto;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+  white-space: pre-wrap;
+}

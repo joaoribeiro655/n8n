@@ -9,6 +9,11 @@
     "icon": "node build/make-icon.mjs",
     "dist": "npm run icon && electron-builder --mac"
   },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9",
+    "pino": "^9.5.0",
+    "qrcode": "^1.5.4"
+  },
   "devDependencies": {
     "electron": "^31.7.6",
     "electron-builder": "^24.13.3"
