@@ -165,9 +165,9 @@ export async function gerarTemasElga(
 
   const userPrompt = `Hoje é ${dataDeHoje()}. Gere ${quantidade} temas de conteúdo/live "em alta" para o ELGA (programa educacional para CLIENTES da Opens).
 
-Os temas devem partir DIRETAMENTE dos assuntos abaixo — eles foram extraídos de interações reais com clientes (suporte, abordagens e atividades) nos últimos ${insumos?.janelaDias || 90} dias. Priorize os mais recorrentes e que rendem boa aula prática.
+Os temas devem partir DIRETAMENTE dos assuntos abaixo — eles foram extraídos de dados reais de CARTEIRA, SUPORTE e CS (clientes da base), nos últimos ${insumos?.janelaDias || 90} dias. NÃO são dados de vendas/leads. Priorize os mais recorrentes e que rendem boa aula prática.
 
-ASSUNTOS RECORRENTES DOS CLIENTES (dados do Growth):
+ASSUNTOS RECORRENTES DOS CLIENTES (carteira/suporte/CS — dados do Growth):
 ${lista}
 ${foco.trim() ? `\nFOCO ADICIONAL DO ORGANIZADOR: ${foco.trim()}` : ''}
 ${

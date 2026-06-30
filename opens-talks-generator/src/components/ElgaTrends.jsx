@@ -42,11 +42,20 @@ export default function ElgaTrends({ growthSession, onConnectGrowth, onMontarEpi
 
       if (!ins.topAssuntos.length) {
         const bloqueadas = ins.fontes.filter((f) => f.erro).map((f) => f.tabela)
-        throw new Error(
-          bloqueadas.length
-            ? `Sem assuntos retornados. Acesso negado/indisponível em: ${bloqueadas.join(', ')} (verifique permissões no Growth).`
-            : 'Nenhum assunto encontrado na janela recente.',
-        )
+        if (bloqueadas.length) {
+          throw new Error(
+            `Sem assuntos retornados. Acesso negado/indisponível em: ${bloqueadas.join(', ')} (verifique permissões no Growth).`,
+          )
+        }
+        if (!ins.fontes.length) {
+          const cands = (ins.tabelasCandidatas || []).slice(0, 10)
+          throw new Error(
+            cands.length
+              ? `Encontrei tabelas de carteira/suporte/CS (${cands.join(', ')}), mas sem colunas de "assunto" reconhecidas. Me diga qual coluna usar e eu ajusto.`
+              : 'Não encontrei tabelas de carteira/suporte/CS acessíveis à sua conta. Confirme suas permissões no Growth (ou me diga os nomes das tabelas).',
+          )
+        }
+        throw new Error('Nenhum assunto encontrado na janela recente.')
       }
 
       setEtapa(usarWeb ? 'Gerando temas em alta (com busca na web)…' : 'Gerando temas em alta…')
