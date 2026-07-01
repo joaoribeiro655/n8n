@@ -1,0 +1,24 @@
+{
+  "name": "meta-ad-escalation-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agente que pesquisa a Meta Ad Library e identifica anúncios escalados (tempo no ar, variações, posicionamentos e análise por IA)",
+  "bin": {
+    "ad-escala": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
