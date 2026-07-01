@@ -4,6 +4,7 @@
  */
 import { analyzeMany } from './ai/analyze.js';
 import { ApifyProvider } from './providers/apify.js';
+import { FreeScraperProvider } from './providers/free.js';
 import { GraphApiProvider } from './providers/graphApi.js';
 import { MockProvider } from './providers/mock.js';
 import { combineScores, scoreAds, type ScoringWeights } from './scoring/escalation.js';
@@ -31,8 +32,10 @@ function makeProvider(kind: ProviderKind): AdLibraryProvider {
     case 'apify':
       return new ApifyProvider();
     case 'graph':
-    default:
       return new GraphApiProvider();
+    case 'free':
+    default:
+      return new FreeScraperProvider();
   }
 }
 

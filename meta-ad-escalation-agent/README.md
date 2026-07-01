@@ -17,21 +17,26 @@ Sem `--ai`, o score final é 100% heurístico. Com `--ai`, é `60% heurística +
 
 ## Fontes de dados (providers)
 
-| Provider | Cobre | Requer | Uso |
+| Provider | Cobre | Custo | Requer |
 |---|---|---|---|
-| **`apify`** (default) | **Anúncios comerciais do Brasil** e do mundo, por nicho | `APIFY_TOKEN` | Pesquisar nichos e espionar concorrentes no BR |
-| `graph` | Só anúncios políticos/sociais (global) ou comerciais da UE | `META_ACCESS_TOKEN` | Transparência política |
-| `mock` | Dados fictícios | — | Testar o pipeline |
+| **`free`** (default) | **Anúncios comerciais do Brasil** e do mundo, por nicho | **Grátis** | Chromium (Playwright) + acesso ao facebook.com |
+| `apify` | Igual ao free | Pago (Apify) | `APIFY_TOKEN` |
+| `graph` | Só políticos/sociais (global) ou comerciais da UE | Grátis | `META_ACCESS_TOKEN` |
+| `mock` | Dados fictícios | — | — |
 
-> Para o caso "pesquisar nichos e pegar anúncios do Brasil", use o provider **`apify`** (é o default). A API oficial da Meta **não** expõe anúncios comerciais do BR.
+> Para "pesquisar nichos e pegar anúncios do Brasil **de graça**", use o provider **`free`** (é o default). Ele abre a Biblioteca de Anúncios pública num Chromium headless e lê os dados das respostas internas. A API oficial da Meta **não** expõe anúncios comerciais do BR.
 
 ## Instalação
 
 ```bash
 cd meta-ad-escalation-agent
 npm install
-cp .env.example .env   # preencha APIFY_TOKEN e (opcional) ANTHROPIC_API_KEY
+npx playwright install chromium   # baixa o Chromium (só na 1ª vez)
+cp .env.example .env              # opcional: ANTHROPIC_API_KEY para o --ai
 ```
+
+> **Importante:** o provider `free` precisa de acesso de rede ao `facebook.com`.
+> Rode na sua máquina — não funciona em sandboxes com saída de rede bloqueada.
 
 ## Uso rápido
 
@@ -47,7 +52,13 @@ Um nicho só, exportando JSON:
 npm run dev -- --terms "suplemento" --countries BR --limit 300 --json > out.json
 ```
 
-Testar o pipeline sem nenhum token (dados fictícios):
+Depurar vendo o navegador abrir (não-headless):
+
+```bash
+SCRAPER_HEADLESS=false npm run dev -- --terms "curso online" --limit 50
+```
+
+Testar o pipeline sem navegador nem token (dados fictícios):
 
 ```bash
 npm run dev -- --provider mock --ai
@@ -60,15 +71,17 @@ npm run build
 node dist/index.js --provider mock --ai
 ```
 
-## ⚠️ Por que Apify e não a API oficial
+## ⚠️ Por que scraping e não a API oficial
 
 O endpoint oficial `ads_archive` do Graph API só entrega:
 - **Anúncios políticos/sociais** (cobertura global), ou
 - **Anúncios comerciais apenas da UE** (por força do DSA).
 
-Para **anúncios comerciais do Brasil** (o caso de espionar concorrentes por nicho), o catálogo geral **não** é exposto pela API oficial — por isso o provider `apify` faz scraping da Biblioteca de Anúncios pública.
+Para **anúncios comerciais do Brasil** (espionar concorrentes por nicho), o catálogo geral **não** é exposto pela API oficial — por isso o provider `free` lê a Biblioteca de Anúncios pública direto no navegador.
 
-O coletor é **plugável** (`AdLibraryProvider`): dá para trocar o actor do Apify (`APIFY_ACTOR_ID`) ou escrever outro provider seguindo a mesma interface em `src/providers/` sem mexer no resto do pipeline (scoring + IA + relatório).
+O coletor é **plugável** (`AdLibraryProvider`): `free`, `apify`, `graph` e `mock` compartilham a mesma normalização (`src/providers/raw.ts`), então trocar de fonte não muda o resto do pipeline (scoring + IA + relatório).
+
+> A Biblioteca de Anúncios é uma ferramenta pública de transparência. Ainda assim, scraping está sujeito aos Termos da Meta e a mudanças no site — a extração é resiliente (varredura recursiva do JSON), mas pode precisar de ajuste se a Meta mudar a estrutura.
 
 ## Arquitetura
 
@@ -77,9 +90,11 @@ src/
   types.ts              Modelo de dados normalizado + contratos
   config.ts             Carrega .env
   providers/
-    apify.ts            Provider de scraping (Apify) — anúncios comerciais BR
-    graphApi.ts         Provider oficial (Graph API ads_archive) — político/UE
-    mock.ts             Dados fictícios para testar sem token
+    free.ts             Scraping GRATUITO via Playwright (default) — comerciais BR
+    apify.ts            Scraping via Apify (pago) — comerciais BR
+    graphApi.ts         API oficial (Graph API ads_archive) — político/UE
+    mock.ts             Dados fictícios para testar sem navegador
+    raw.ts              Normalização compartilhada (unix/ISO, snapshot, cards…)
   scoring/
     escalation.ts       Heurística tempo + variações + posicionamentos
   ai/
@@ -88,9 +103,3 @@ src/
   report.ts             Saída em texto/JSON
   index.ts              CLI
 ```
-
-## Configurar o Apify
-
-1. Crie uma conta em <https://apify.com>.
-2. Copie o token em <https://console.apify.com/account/integrations> → `APIFY_TOKEN`.
-3. O actor default é `curious_coder/facebook-ads-library-scraper`. Se preferir outro actor equivalente da Ad Library, defina `APIFY_ACTOR_ID` (formato `usuario~actor`). A normalização em `src/providers/apify.ts` é defensiva e cobre variações de formato entre actors.

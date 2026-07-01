@@ -27,7 +27,7 @@ interface CliArgs {
 
 function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
-    provider: 'apify',
+    provider: 'free',
     countries: ['BR'],
     activeStatus: 'ACTIVE',
     adType: 'ALL',
@@ -65,8 +65,10 @@ Agente de anúncios escalados — Meta Ad Library
 
 Uso: ad-escala [opções]
 
-  --provider <apify|graph|mock>  Fonte de dados (default: apify p/ anúncios comerciais BR).
-                           "graph" = API oficial (só político/UE). "mock" = dados fictícios.
+  --provider <free|apify|graph|mock>  Fonte de dados (default: free).
+                           "free" = scraping gratuito via Playwright (anúncios comerciais BR).
+                           "apify" = scraping pago via Apify. "graph" = API oficial (só político/UE).
+                           "mock" = dados fictícios.
   --terms <texto>          Termo de busca de um nicho (ex.: "emagrecedor")
   --niches "a|b|c"         Vários nichos de uma vez, separados por | (busca cada e junta)
   --countries <BR,US>      Países alcançados, separados por vírgula (default: BR)
@@ -79,8 +81,8 @@ Uso: ad-escala [opções]
   --json                   Saída em JSON
   -h, --help               Esta ajuda
 
-Requer APIFY_TOKEN no .env para o provider "apify" (anúncios comerciais BR),
-ou META_ACCESS_TOKEN para o provider "graph" (só político/UE).
+O provider "free" (default) NÃO precisa de token — só de um Chromium instalado
+(npm install playwright && npx playwright install chromium) e acesso ao facebook.com.
 
 Exemplos:
   ad-escala --niches "emagrecedor|renda extra|escova progressiva" --ai --min 60

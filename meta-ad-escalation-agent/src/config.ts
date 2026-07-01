@@ -34,6 +34,16 @@ export const config = {
     // Actor da Ad Library. Default: curious_coder/facebook-ads-library-scraper.
     actorId: process.env.APIFY_ACTOR_ID ?? 'curious_coder~facebook-ads-library-scraper',
   },
+  scraper: {
+    // Caminho do Chromium. Vazio = deixa o Playwright achar o dele (normal
+    // após `npx playwright install`). Só precisa setar em ambientes que já
+    // têm um Chromium pré-instalado em local não-padrão.
+    chromiumPath: process.env.CHROMIUM_PATH ?? '',
+    // headless=false abre a janela (útil pra depurar / passar checagens).
+    headless: (process.env.SCRAPER_HEADLESS ?? 'true') !== 'false',
+    // Proxy opcional (ex.: ambientes corporativos). Vazio = sem proxy.
+    proxy: process.env.HTTPS_PROXY ?? process.env.SCRAPER_PROXY ?? '',
+  },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
     model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8',
