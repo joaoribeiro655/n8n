@@ -29,6 +29,11 @@ export const config = {
     accessToken: process.env.META_ACCESS_TOKEN ?? '',
     graphVersion: process.env.META_GRAPH_VERSION ?? 'v21.0',
   },
+  apify: {
+    token: process.env.APIFY_TOKEN ?? '',
+    // Actor da Ad Library. Default: curious_coder/facebook-ads-library-scraper.
+    actorId: process.env.APIFY_ACTOR_ID ?? 'curious_coder~facebook-ads-library-scraper',
+  },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
     model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8',

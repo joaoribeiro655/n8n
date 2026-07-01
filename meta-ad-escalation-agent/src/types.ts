@@ -46,6 +46,9 @@ export interface SearchQuery {
   limit?: number;
 }
 
+/** Fontes de dados disponíveis. */
+export type ProviderKind = 'graph' | 'apify' | 'mock';
+
 /** Contrato que toda fonte de dados da Ad Library deve cumprir. */
 export interface AdLibraryProvider {
   readonly name: string;

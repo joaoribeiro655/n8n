@@ -9,10 +9,12 @@
  */
 import { runAgent, type RunOptions } from './agent.js';
 import { toJson, toText } from './report.js';
+import type { ProviderKind } from './types.js';
 
 interface CliArgs {
-  provider: 'graph' | 'mock';
+  provider: ProviderKind;
   terms?: string;
+  niches?: string[];
   countries: string[];
   pageIds?: string[];
   activeStatus: 'ACTIVE' | 'INACTIVE' | 'ALL';
@@ -25,7 +27,7 @@ interface CliArgs {
 
 function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
-    provider: 'graph',
+    provider: 'apify',
     countries: ['BR'],
     activeStatus: 'ACTIVE',
     adType: 'ALL',
@@ -41,6 +43,7 @@ function parseArgs(argv: string[]): CliArgs {
     switch (a) {
       case '--provider': args.provider = next() as CliArgs['provider']; break;
       case '--terms': args.terms = next(); break;
+      case '--niches': args.niches = next().split('|').map((s) => s.trim()).filter(Boolean); break;
       case '--countries': args.countries = next().split(',').map((s) => s.trim().toUpperCase()); break;
       case '--page-ids': args.pageIds = next().split(',').map((s) => s.trim()); break;
       case '--status': args.activeStatus = next() as CliArgs['activeStatus']; break;
@@ -62,8 +65,10 @@ Agente de anúncios escalados — Meta Ad Library
 
 Uso: ad-escala [opções]
 
-  --provider <graph|mock>  Fonte de dados (default: graph). "mock" roda com dados fictícios.
-  --terms <texto>          Termos de busca (ex.: "emagrecedor")
+  --provider <apify|graph|mock>  Fonte de dados (default: apify p/ anúncios comerciais BR).
+                           "graph" = API oficial (só político/UE). "mock" = dados fictícios.
+  --terms <texto>          Termo de busca de um nicho (ex.: "emagrecedor")
+  --niches "a|b|c"         Vários nichos de uma vez, separados por | (busca cada e junta)
   --countries <BR,US>      Países alcançados, separados por vírgula (default: BR)
   --page-ids <id,id>       Buscar por páginas/anunciantes específicos
   --status <ACTIVE|INACTIVE|ALL>   Status dos anúncios (default: ACTIVE)
@@ -74,7 +79,12 @@ Uso: ad-escala [opções]
   --json                   Saída em JSON
   -h, --help               Esta ajuda
 
-Requer META_ACCESS_TOKEN no .env para o provider "graph".
+Requer APIFY_TOKEN no .env para o provider "apify" (anúncios comerciais BR),
+ou META_ACCESS_TOKEN para o provider "graph" (só político/UE).
+
+Exemplos:
+  ad-escala --niches "emagrecedor|renda extra|escova progressiva" --ai --min 60
+  ad-escala --terms "suplemento" --countries BR --limit 300 --json > out.json
 `);
 }
 
@@ -84,6 +94,7 @@ async function main(): Promise<void> {
   const opts: RunOptions = {
     provider: args.provider,
     terms: args.terms,
+    niches: args.niches,
     countries: args.countries,
     pageIds: args.pageIds,
     activeStatus: args.activeStatus,
@@ -94,9 +105,14 @@ async function main(): Promise<void> {
   };
 
   if (!args.json) {
+    const alvo = args.niches?.length
+      ? `nichos=[${args.niches.join(', ')}]`
+      : args.terms
+        ? `termos="${args.terms}"`
+        : 'sem termo';
     console.error(
-      `Buscando na Ad Library (provider=${args.provider}, países=${args.countries.join(',')}` +
-        `${args.terms ? `, termos="${args.terms}"` : ''}, IA=${args.useAi ? 'on' : 'off'})…`,
+      `Buscando na Ad Library (provider=${args.provider}, países=${args.countries.join(',')}, ` +
+        `${alvo}, IA=${args.useAi ? 'on' : 'off'})…`,
     );
   }
 

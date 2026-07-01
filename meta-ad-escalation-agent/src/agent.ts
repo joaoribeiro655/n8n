@@ -3,13 +3,19 @@
  * escala, opcionalmente roda a análise por IA e devolve os anúncios ranqueados.
  */
 import { analyzeMany } from './ai/analyze.js';
+import { ApifyProvider } from './providers/apify.js';
 import { GraphApiProvider } from './providers/graphApi.js';
 import { MockProvider } from './providers/mock.js';
 import { combineScores, scoreAds, type ScoringWeights } from './scoring/escalation.js';
-import type { AdLibraryProvider, ScoredAd, SearchQuery } from './types.js';
+import type { Ad, AdLibraryProvider, ProviderKind, ScoredAd, SearchQuery } from './types.js';
 
 export interface RunOptions extends SearchQuery {
-  provider: 'graph' | 'mock';
+  provider: ProviderKind;
+  /**
+   * Nichos a pesquisar. Cada nicho vira uma busca separada e os resultados são
+   * unidos (dedup por ID). Se vazio, usa `terms`.
+   */
+  niches?: string[];
   /** Rodar análise por IA do criativo */
   useAi: boolean;
   /** Peso dos eixos heurísticos (opcional) */
@@ -18,14 +24,32 @@ export interface RunOptions extends SearchQuery {
   minScore?: number;
 }
 
-function makeProvider(kind: 'graph' | 'mock'): AdLibraryProvider {
-  return kind === 'mock' ? new MockProvider() : new GraphApiProvider();
+function makeProvider(kind: ProviderKind): AdLibraryProvider {
+  switch (kind) {
+    case 'mock':
+      return new MockProvider();
+    case 'apify':
+      return new ApifyProvider();
+    case 'graph':
+    default:
+      return new GraphApiProvider();
+  }
 }
 
 export async function runAgent(opts: RunOptions): Promise<ScoredAd[]> {
   const provider = makeProvider(opts.provider);
 
-  const ads = await provider.search(opts);
+  // Lista de termos a buscar: nichos explícitos, ou o `terms` único.
+  const searches = opts.niches?.length ? opts.niches : [opts.terms ?? ''];
+
+  const byId = new Map<string, Ad>();
+  for (const term of searches) {
+    const found = await provider.search({ ...opts, terms: term || undefined });
+    for (const ad of found) {
+      if (ad.id) byId.set(ad.id, ad);
+    }
+  }
+  const ads = [...byId.values()];
   if (ads.length === 0) return [];
 
   let scored = scoreAds(ads, opts.weights);

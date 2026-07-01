@@ -15,27 +15,42 @@ O score final (0–100) combina quatro sinais:
 
 Sem `--ai`, o score final é 100% heurístico. Com `--ai`, é `60% heurística + 40% IA`.
 
+## Fontes de dados (providers)
+
+| Provider | Cobre | Requer | Uso |
+|---|---|---|---|
+| **`apify`** (default) | **Anúncios comerciais do Brasil** e do mundo, por nicho | `APIFY_TOKEN` | Pesquisar nichos e espionar concorrentes no BR |
+| `graph` | Só anúncios políticos/sociais (global) ou comerciais da UE | `META_ACCESS_TOKEN` | Transparência política |
+| `mock` | Dados fictícios | — | Testar o pipeline |
+
+> Para o caso "pesquisar nichos e pegar anúncios do Brasil", use o provider **`apify`** (é o default). A API oficial da Meta **não** expõe anúncios comerciais do BR.
+
 ## Instalação
 
 ```bash
 cd meta-ad-escalation-agent
 npm install
-cp .env.example .env   # preencha META_ACCESS_TOKEN e (opcional) ANTHROPIC_API_KEY
+cp .env.example .env   # preencha APIFY_TOKEN e (opcional) ANTHROPIC_API_KEY
 ```
 
 ## Uso rápido
 
-Teste o pipeline sem token, com dados fictícios:
+Pesquisar vários nichos no Brasil e ranquear por escala, com análise de IA:
+
+```bash
+npm run dev -- --niches "emagrecedor|renda extra|escova progressiva" --ai --min 60
+```
+
+Um nicho só, exportando JSON:
+
+```bash
+npm run dev -- --terms "suplemento" --countries BR --limit 300 --json > out.json
+```
+
+Testar o pipeline sem nenhum token (dados fictícios):
 
 ```bash
 npm run dev -- --provider mock --ai
-```
-
-Busca real (requer `META_ACCESS_TOKEN`):
-
-```bash
-npm run dev -- --terms "emagrecedor" --countries BR --ai --min 60
-npm run dev -- --page-ids 1234567890 --countries BR --json > out.json
 ```
 
 Build para produção:
@@ -45,14 +60,15 @@ npm run build
 node dist/index.js --provider mock --ai
 ```
 
-## ⚠️ Limitações da API oficial da Meta
+## ⚠️ Por que Apify e não a API oficial
 
-O endpoint oficial `ads_archive` do Graph API:
+O endpoint oficial `ads_archive` do Graph API só entrega:
+- **Anúncios políticos/sociais** (cobertura global), ou
+- **Anúncios comerciais apenas da UE** (por força do DSA).
 
-- **Anúncios políticos/sociais** (`--ad-type POLITICAL_AND_ISSUE_ADS`): dados ricos (gasto, impressões), cobertura global.
-- **Anúncios comerciais** (`--ad-type ALL`): a API oficial só entrega o catálogo geral para **países da UE** (por força do DSA), com campos limitados. Para BR/US comerciais, o catálogo geral **não** é exposto pela API oficial.
+Para **anúncios comerciais do Brasil** (o caso de espionar concorrentes por nicho), o catálogo geral **não** é exposto pela API oficial — por isso o provider `apify` faz scraping da Biblioteca de Anúncios pública.
 
-Por isso o coletor é **plugável** (`AdLibraryProvider`). Para cobrir anúncios comerciais fora da UE, implemente um provider de scraping (ex.: Apify "Facebook Ad Library Scraper" ou o endpoint GraphQL interno da Ad Library) seguindo a mesma interface em `src/providers/` — o resto do pipeline (scoring + IA + relatório) não muda.
+O coletor é **plugável** (`AdLibraryProvider`): dá para trocar o actor do Apify (`APIFY_ACTOR_ID`) ou escrever outro provider seguindo a mesma interface em `src/providers/` sem mexer no resto do pipeline (scoring + IA + relatório).
 
 ## Arquitetura
 
@@ -61,19 +77,20 @@ src/
   types.ts              Modelo de dados normalizado + contratos
   config.ts             Carrega .env
   providers/
-    graphApi.ts         Provider oficial (Graph API ads_archive)
+    apify.ts            Provider de scraping (Apify) — anúncios comerciais BR
+    graphApi.ts         Provider oficial (Graph API ads_archive) — político/UE
     mock.ts             Dados fictícios para testar sem token
   scoring/
     escalation.ts       Heurística tempo + variações + posicionamentos
   ai/
-    analyze.ts          Análise do criativo por Claude (structured outputs)
-  agent.ts              Orquestra busca → score → IA → ranking
+    analyze.ts          Análise do criativo por Claude (tool use estruturado)
+  agent.ts              Orquestra busca (multi-nicho) → score → IA → ranking
   report.ts             Saída em texto/JSON
   index.ts              CLI
 ```
 
-## Token da Meta
+## Configurar o Apify
 
-1. Crie um app em <https://developers.facebook.com>.
-2. Confirme identidade/local (necessário para a Ad Library API).
-3. Gere um token no Explorador da Graph API (ou um token de sistema) e coloque em `META_ACCESS_TOKEN`.
+1. Crie uma conta em <https://apify.com>.
+2. Copie o token em <https://console.apify.com/account/integrations> → `APIFY_TOKEN`.
+3. O actor default é `curious_coder/facebook-ads-library-scraper`. Se preferir outro actor equivalente da Ad Library, defina `APIFY_ACTOR_ID` (formato `usuario~actor`). A normalização em `src/providers/apify.ts` é defensiva e cobre variações de formato entre actors.
