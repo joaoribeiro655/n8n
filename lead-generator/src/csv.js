@@ -1,27 +1,42 @@
 "use strict";
 
-/** Geração de CSV sem dependências. UTF-8 + BOM (abre certo no Excel/Numbers/Sheets). */
+/**
+ * Geração de CSV no formato do modelo do usuário (importável como planilha):
+ *   nome_completo, telefone, email, observacoes
+ * UTF-8 + BOM (abre certo no Excel/Numbers/Sheets).
+ */
+
+/** Telefone só com dígitos, no padrão nacional (remove o DDI 55 se houver). */
+function telDigits(l) {
+  let d = String(l.whatsapp || l.phone || "").replace(/\D/g, "");
+  if (d.startsWith("55") && (d.length === 12 || d.length === 13)) d = d.slice(2);
+  return d;
+}
+
+function nomeCompleto(l) {
+  return l.name || l.company || "";
+}
+
+function email(l) {
+  return l.email || l.emailGuess || "";
+}
+
+function observacoes(l) {
+  const parts = [];
+  if (l.company && l.company !== nomeCompleto(l)) parts.push(l.company);
+  if (l.city) parts.push(l.city);
+  if (l.decisorTitle) parts.push(l.decisorTitle);
+  else if (l.category) parts.push(l.category);
+  if (l.website) parts.push(l.website);
+  if (!l.email && l.emailGuess) parts.push("e-mail provável");
+  return parts.join(" · ");
+}
 
 const COLUMNS = [
-  ["empresa", (l) => l.company],
-  ["contato", (l) => l.name],
-  ["cargo_decisor", (l) => l.decisorTitle],
-  ["linkedin_perfil", (l) => l.linkedinUrl],
-  ["categoria", (l) => l.category],
-  ["telefone", (l) => l.phone],
-  ["whatsapp", (l) => l.whatsapp],
-  ["email", (l) => l.email],
-  ["email_provavel", (l) => l.emailGuess],
-  ["site", (l) => l.website],
-  ["instagram", (l) => l.instagram],
-  ["endereco", (l) => l.address],
-  ["cidade", (l) => l.city],
-  ["avaliacao", (l) => l.rating],
-  ["num_avaliacoes", (l) => l.reviews],
-  ["cnpj", (l) => l.cnpj],
-  ["fonte", (l) => l.source],
-  ["maps_url", (l) => l.mapsUrl],
-  ["linkedin_busca", (l) => l.linkedinSearch],
+  ["nome_completo", nomeCompleto],
+  ["telefone", telDigits],
+  ["email", email],
+  ["observacoes", observacoes],
 ];
 
 function escape(value) {

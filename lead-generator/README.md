@@ -70,6 +70,9 @@ para a pasta **Aplicativos**.
 5. **Gerar lista** — acompanhe o progresso embaixo.
 6. **Baixar CSV** — escolhe onde salvar.
 
+O CSV sai no formato: `nome_completo, telefone, email, observacoes`
+(telefone só com dígitos, sem +55; `observacoes` traz empresa · cidade · cargo · site).
+
 Nas linhas: o nome da empresa abre no Google Maps, o site/decisor abrem no
 navegador.
 
