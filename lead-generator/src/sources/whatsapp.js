@@ -17,14 +17,16 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const makeWASocket = require("@whiskeysockets/baileys").default;
-const {
-  useMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-} = require("@whiskeysockets/baileys");
 const qrcode = require("qrcode");
 const pino = require("pino");
+
+// A Baileys é ESM-only, então não dá para usar require(): carregamos sob
+// demanda com import() dinâmico (permitido dentro de CommonJS).
+let _baileys = null;
+async function loadBaileys() {
+  if (!_baileys) _baileys = await import("@whiskeysockets/baileys");
+  return _baileys;
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const logger = pino({ level: "silent" });
@@ -79,6 +81,10 @@ async function connect(opts) {
   authDir = opts.authDir;
   const onUpdate = opts.onUpdate || (() => {});
   fs.mkdirSync(authDir, { recursive: true });
+
+  const baileys = await loadBaileys();
+  const makeWASocket = baileys.default;
+  const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
 
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   let version;
