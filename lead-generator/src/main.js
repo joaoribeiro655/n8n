@@ -87,6 +87,7 @@ ipcMain.handle("run", async (event, params) => {
     cnae = ["4511101", "4511102"],
     uf = "",
     titles = [],
+    onlyWithEmail = false,
   } = params || {};
 
   let leads = [];
@@ -175,6 +176,13 @@ ipcMain.handle("run", async (event, params) => {
         const wa = phoneToWhatsapp(lead.phone);
         if (wa) lead.whatsapp = wa;
       }
+    }
+
+    // 8) Filtro opcional: manter só quem tem e-mail confirmado.
+    if (onlyWithEmail) {
+      const antes = leads.length;
+      leads = leads.filter((l) => l.email);
+      progress(`Filtro "só com e-mail": ${leads.length} de ${antes}.`);
     }
 
     progress(`Concluído: ${leads.length} leads.`);

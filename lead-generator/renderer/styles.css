@@ -215,6 +215,15 @@ a:hover {
   color: var(--sky);
   border-color: rgba(56, 189, 248, 0.5);
 }
+.update-btn {
+  margin-left: auto;
+  align-self: center;
+  font-weight: 500;
+}
+.update-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 .hidden {
   display: none !important;
 }

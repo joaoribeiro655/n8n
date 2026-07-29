@@ -15,6 +15,18 @@ document.querySelectorAll(".tab").forEach((tab) => {
   });
 });
 
+/* ===== Atualizações ===== */
+$("check-updates").addEventListener("click", async () => {
+  $("check-updates").disabled = true;
+  $("check-updates").textContent = "↻ Verificando…";
+  try {
+    await api.checkUpdates();
+  } finally {
+    $("check-updates").disabled = false;
+    $("check-updates").textContent = "↻ Atualizações";
+  }
+});
+
 /* ===== Coleta ===== */
 api.onProgress((msg) => {
   $("status").textContent = msg;
@@ -36,6 +48,7 @@ function readParams() {
       cnpj: $("src-cnpj").checked,
       linkedin: $("src-linkedin").checked,
     },
+    onlyWithEmail: $("only-email").checked,
   };
 }
 

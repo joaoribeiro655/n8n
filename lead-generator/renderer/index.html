@@ -13,6 +13,7 @@
         <button class="tab active" data-tab="coletar">1 · Coletar leads</button>
         <button class="tab" data-tab="whats">2 · Disparar WhatsApp</button>
       </nav>
+      <button id="check-updates" class="tab update-btn" title="Verificar se há uma versão nova">↻ Atualizações</button>
     </header>
 
     <!-- ABA 1: COLETAR -->
@@ -38,6 +39,11 @@
           <label class="chk"><input type="checkbox" id="src-site" checked /> <span>Sites (e-mail, e-mail provável e WhatsApp)</span></label>
           <label class="chk"><input type="checkbox" id="src-cnpj" /> <span>Base de CNPJ (Receita)</span></label>
           <label class="chk"><input type="checkbox" id="src-linkedin" checked /> <span>LinkedIn (decisores, sem login)</span></label>
+        </div>
+
+        <label class="label">Refinar resultado</label>
+        <div class="sources">
+          <label class="chk"><input type="checkbox" id="only-email" /> <span>Somente leads com e-mail</span></label>
         </div>
 
         <button id="run" class="btn-primary">Gerar lista</button>
