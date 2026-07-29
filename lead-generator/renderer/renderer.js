@@ -47,8 +47,10 @@ function readParams() {
       site: $("src-site").checked,
       cnpj: $("src-cnpj").checked,
       linkedin: $("src-linkedin").checked,
+      websearchEmail: $("src-websearch-email").checked,
     },
     onlyWithEmail: $("only-email").checked,
+    deepEmail: $("deep-email").checked,
   };
 }
 
@@ -80,11 +82,18 @@ function renderRows(leads) {
       const tel = l.whatsapp
         ? `${escapeHtml(l.phone || "")} <a href="#" data-ext="${escapeHtml(l.whatsapp)}">zap</a>`
         : escapeHtml(l.phone || "—");
-      const emailCell = l.email
-        ? escapeHtml(l.email)
-        : l.emailGuess
-          ? `~ ${escapeHtml(l.emailGuess)}`
-          : "—";
+      let emailCell;
+      if (l.email) {
+        const ok = l.emailStatus === "valido" || l.emailStatus === "dominio-ok";
+        const tag = l.emailStatusLabel
+          ? ` <span class="etag ${ok ? "ok" : "bad"}">${escapeHtml(l.emailStatusLabel)}</span>`
+          : "";
+        emailCell = escapeHtml(l.email) + tag;
+      } else if (l.emailGuess) {
+        emailCell = `~ ${escapeHtml(l.emailGuess)}`;
+      } else {
+        emailCell = "—";
+      }
       return `<tr>
         <td>${empresa}</td>
         <td>${tel}</td>

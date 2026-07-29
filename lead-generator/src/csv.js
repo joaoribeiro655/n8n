@@ -29,6 +29,8 @@ function observacoes(l) {
   else if (l.category) parts.push(l.category);
   if (l.website) parts.push(l.website);
   if (!l.email && l.emailGuess) parts.push("e-mail provável");
+  if (l.email && l.emailStatusLabel) parts.push("e-mail " + l.emailStatusLabel);
+  if (l.emailSource) parts.push("via " + l.emailSource);
   return parts.join(" · ");
 }
 

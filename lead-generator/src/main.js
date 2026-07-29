@@ -10,6 +10,8 @@ const { listByCnae, enrichByCnpj } = require("./sources/cnpj");
 const { enrichLinkedin } = require("./sources/linkedin");
 const { createSearcher } = require("./sources/websearch");
 const { bestGuessEmail, domainFromUrl } = require("./sources/email");
+const { findEmailBySearch } = require("./sources/emailSearch");
+const { validateEmail, STATUS_LABEL } = require("./sources/emailValidate");
 const wa = require("./sources/whatsapp");
 const { buildCsv } = require("./csv");
 const { checkForUpdates } = require("./updater");
@@ -88,6 +90,7 @@ ipcMain.handle("run", async (event, params) => {
     uf = "",
     titles = [],
     onlyWithEmail = false,
+    deepEmail = false,
   } = params || {};
 
   let leads = [];
@@ -175,6 +178,40 @@ ipcMain.handle("run", async (event, params) => {
       if (!lead.whatsapp && lead.phone) {
         const wa = phoneToWhatsapp(lead.phone);
         if (wa) lead.whatsapp = wa;
+      }
+    }
+
+    // 7.5) Fonte extra: busca web de e-mail para quem ficou sem.
+    if (sources.websearchEmail) {
+      const semEmail = leads.filter((l) => l.company && !l.email);
+      if (semEmail.length) {
+        const searcher = await createSearcher();
+        try {
+          let done = 0;
+          for (const lead of semEmail) {
+            const hit = await findEmailBySearch(lead, searcher.search);
+            if (hit?.email) {
+              lead.email = hit.email;
+              lead.emailSource = "busca web";
+              if (hit.website && !lead.website) lead.website = hit.website;
+            }
+            progress(`Busca extra de e-mail: ${++done}/${semEmail.length}…`);
+          }
+        } finally {
+          searcher.close();
+        }
+      }
+    }
+
+    // 7.6) Validação dos e-mails (MX sempre; SMTP se "verificação profunda").
+    const comEmail = leads.filter((l) => l.email);
+    if (comEmail.length) {
+      let done = 0;
+      for (const lead of comEmail) {
+        const v = await validateEmail(lead.email, { smtp: deepEmail });
+        lead.emailStatus = v.status;
+        lead.emailStatusLabel = STATUS_LABEL[v.status] || v.status;
+        progress(`Validando e-mails${deepEmail ? " (SMTP)" : ""}: ${++done}/${comEmail.length}…`);
       }
     }
 
