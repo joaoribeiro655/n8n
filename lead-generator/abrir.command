@@ -44,6 +44,19 @@ if [ ! -d node_modules ]; then
   npm install || { echo "❌ Falha ao instalar."; read -r -n 1 -p "Tecla para fechar…"; exit 1; }
 fi
 
+# 3.5) Repara o Electron se o macOS (Gatekeeper) tiver apagado o binário/motor
+#      e tira a "quarentena" ANTES de abrir, evitando o bloqueio de "malware".
+ELECTRON_BIN="node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
+ELECTRON_FW="node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Framework.framework"
+if [ ! -f "$ELECTRON_BIN" ] || [ ! -d "$ELECTRON_FW" ]; then
+  echo "🔧 Reparando o Electron (instalação incompleta)…"
+  rm -rf node_modules/electron
+  npm install electron
+fi
+if [ -d node_modules/electron ]; then
+  xattr -cr node_modules/electron 2>/dev/null
+fi
+
 # 4) Abre a janela
 echo "🚀 Abrindo o Gerador de Leads…"
 npm start
