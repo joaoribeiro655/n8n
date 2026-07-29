@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("api", {
   run: (params) => ipcRenderer.invoke("run", params),
   exportCsv: (leads) => ipcRenderer.invoke("export-csv", leads),
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+  checkUpdates: () => ipcRenderer.invoke("check-updates"),
   onProgress: (cb) => subscribe("progress", cb),
 
   // WhatsApp (API não oficial)

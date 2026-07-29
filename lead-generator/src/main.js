@@ -12,6 +12,7 @@ const { createSearcher } = require("./sources/websearch");
 const { bestGuessEmail, domainFromUrl } = require("./sources/email");
 const wa = require("./sources/whatsapp");
 const { buildCsv } = require("./csv");
+const { checkForUpdates } = require("./updater");
 
 let waStop = false;
 
@@ -41,6 +42,14 @@ app.whenReady().then(() => {
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  // Auto-update ao abrir: só no app empacotado (em dev não faz sentido).
+  // Silencioso — só avisa se realmente houver versão nova.
+  if (app.isPackaged) {
+    setTimeout(() => {
+      checkForUpdates({ silent: true, parentWindow: mainWindow });
+    }, 3000);
+  }
 });
 
 app.on("window-all-closed", () => {
@@ -189,6 +198,12 @@ ipcMain.handle("export-csv", async (_event, leads) => {
 ipcMain.handle("open-external", async (_event, url) => {
   if (url) await shell.openExternal(url);
   return { ok: true };
+});
+
+// Verificação manual de atualização (botão na tela). Mostra retorno mesmo
+// quando já está atualizado ou quando a checagem falha.
+ipcMain.handle("check-updates", async () => {
+  return checkForUpdates({ silent: false, parentWindow: mainWindow });
 });
 
 // ---- WhatsApp (API não oficial via Baileys) ----

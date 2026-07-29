@@ -27,6 +27,13 @@
       "target": ["dmg", "zip"],
       "icon": "build/icon.png"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "joaoribeiro655",
+        "repo": "n8n"
+      }
+    ],
     "directories": {
       "output": "dist"
     }
