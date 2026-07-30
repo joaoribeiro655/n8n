@@ -51,6 +51,7 @@ function readParams() {
     },
     onlyWithEmail: $("only-email").checked,
     deepEmail: $("deep-email").checked,
+    preferDecisor: $("prefer-decisor").checked,
   };
 }
 
@@ -88,7 +89,14 @@ function renderRows(leads) {
         const tag = l.emailStatusLabel
           ? ` <span class="etag ${ok ? "ok" : "bad"}">${escapeHtml(l.emailStatusLabel)}</span>`
           : "";
-        emailCell = escapeHtml(l.email) + tag;
+        const isDecisor = /^decisor/.test(l.emailKind || "");
+        const kindTag =
+          l.emailKind === "generico"
+            ? ` <span class="etag muted">genérico</span>`
+            : isDecisor || l.emailKind === "pessoal"
+              ? ` <span class="etag ok">👤 ${escapeHtml(l.emailKind.startsWith("decisor") ? "decisor" : "pessoal")}</span>`
+              : "";
+        emailCell = escapeHtml(l.email) + kindTag + tag;
       } else if (l.emailGuess) {
         emailCell = `~ ${escapeHtml(l.emailGuess)}`;
       } else {

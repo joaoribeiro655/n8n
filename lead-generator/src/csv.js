@@ -29,6 +29,8 @@ function observacoes(l) {
   else if (l.category) parts.push(l.category);
   if (l.website) parts.push(l.website);
   if (!l.email && l.emailGuess) parts.push("e-mail provável");
+  if (l.email && /^decisor/.test(l.emailKind || "")) parts.push("e-mail de decisor");
+  else if (l.email && l.emailKind === "generico") parts.push("e-mail genérico");
   if (l.email && l.emailStatusLabel) parts.push("e-mail " + l.emailStatusLabel);
   if (l.emailSource) parts.push("via " + l.emailSource);
   return parts.join(" · ");

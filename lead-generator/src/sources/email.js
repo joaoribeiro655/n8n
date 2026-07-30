@@ -75,4 +75,66 @@ async function bestGuessEmail(fullName, domain) {
   return ok ? cands[0] : "";
 }
 
-module.exports = { guessEmails, hasMx, bestGuessEmail, domainFromUrl, nameParts };
+// E-mails "de papel" (caixas genéricas da empresa, não de uma pessoa).
+const GENERIC =
+  /^(contato|contact|vendas|comercial|atendimento|sac|faleconosco|fale|financeiro|info|adm|administrativo|administracao|suporte|support|faq|newsletter|marketing|rh|recursoshumanos|hello|ola|oi|cadastro|orcamento|orcamentos|loja|compras)@/i;
+
+/**
+ * Classifica um e-mail em relação ao decisor:
+ *   decisor          – bate nome E sobrenome do decisor
+ *   decisor-possivel – bate o primeiro nome do decisor
+ *   pessoal          – parece de pessoa (nome.sobrenome), mas não sabemos quem
+ *   generico         – caixa "de papel" (contato@, sac@…)
+ *   outro            – não classificado
+ */
+function classifyEmail(email, parts) {
+  const local = String(email).split("@")[0].toLowerCase();
+  const norm = local.replace(/[^a-z]/g, "");
+  if (parts && parts.length) {
+    const first = parts[0];
+    const last = parts.length > 1 ? parts[parts.length - 1] : "";
+    if (first && last && norm.includes(first) && norm.includes(last)) return "decisor";
+    if (first && first.length >= 4 && norm.includes(first)) return "decisor-possivel";
+  }
+  if (GENERIC.test(email)) return "generico";
+  if (/^[a-z]+[._][a-z]+@/i.test(email) && !/\d/.test(local)) return "pessoal";
+  return "outro";
+}
+
+/**
+ * Escolhe o melhor e-mail de uma lista, priorizando o do decisor.
+ * @param {string[]} emails
+ * @param {string} fullName  nome do decisor (se conhecido)
+ * @param {object} opts
+ * @param {boolean} opts.strictDecisor  se true, descarta genéricos de vez
+ * @returns {{email:string, kind:string}}
+ */
+function pickBestEmail(emails, fullName, { strictDecisor = false } = {}) {
+  if (!Array.isArray(emails) || !emails.length) return { email: "", kind: "" };
+  const parts = fullName ? nameParts(fullName) : [];
+  const RANK = {
+    decisor: 6,
+    "decisor-possivel": 5,
+    pessoal: 4,
+    outro: 3,
+    generico: 1,
+  };
+  let best = null;
+  for (const email of emails) {
+    const kind = classifyEmail(email, parts);
+    if (strictDecisor && (kind === "generico" || kind === "outro")) continue;
+    const r = RANK[kind] ?? 2;
+    if (!best || r > best.r) best = { email, kind, r };
+  }
+  return best ? { email: best.email, kind: best.kind } : { email: "", kind: "" };
+}
+
+module.exports = {
+  guessEmails,
+  hasMx,
+  bestGuessEmail,
+  domainFromUrl,
+  nameParts,
+  classifyEmail,
+  pickBestEmail,
+};

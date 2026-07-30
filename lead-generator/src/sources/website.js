@@ -24,9 +24,10 @@ const CONTACT_PATHS = [
   "quem-somos",
 ];
 
-// E-mails que quase sempre são lixo (libs, exemplos, imagens).
+// E-mails que quase sempre são lixo (libs, exemplos, imagens, caixas
+// automáticas que não servem para prospecção).
 const EMAIL_BLOCKLIST =
-  /(sentry|wixpress|example\.com|@2x|\.png|\.jpg|\.jpeg|\.gif|\.webp|\.svg|domain\.com|email\.com|seuemail|@sentry)/i;
+  /(sentry|wixpress|wix\.com|squarespace|example\.|@2x|\.png|\.jpg|\.jpeg|\.gif|\.webp|\.svg|\.ico|\.js|\.css|domain\.com|email\.com|seuemail|seu-?email|yourdomain|seudominio|nomedominio|no-?reply|noreply|nao-?responda|naoresponda|postmaster|mailer-daemon|webmaster|hostmaster|abuse@|privacy@|gdpr|@godaddy|@wordpress|@cloudflare|@sentry|@wix|@lvt\.|teste?@|exemplo@|user@|usuario@|nome@)/i;
 
 function normalizeBaseUrl(url) {
   if (!url) return null;
@@ -127,12 +128,17 @@ async function fetchText(url, timeoutMs = 12000) {
   }
 }
 
-/** Retorna { email, whatsapp, instagram } a partir do site informado. */
+/**
+ * Retorna { email, emails, whatsapp, instagram } a partir do site.
+ * `emails` traz TODOS os e-mails encontrados (limpos e sem repetição) para
+ * que a escolha do melhor — priorizando o do decisor — seja feita depois,
+ * com o nome do decisor em mãos. `email` é só um padrão de conveniência.
+ */
 async function extractFromWebsite(website) {
   const base = normalizeBaseUrl(website);
-  if (!base) return { email: "", whatsapp: "", instagram: "" };
+  if (!base) return { email: "", emails: [], whatsapp: "", instagram: "" };
 
-  let email = "";
+  const emailsSet = new Set();
   let whatsapp = "";
   let instagram = "";
 
@@ -141,20 +147,21 @@ async function extractFromWebsite(website) {
     const html = await fetchText(url);
     if (!html) continue;
 
-    if (!email) {
-      const emails = extractEmails(html);
-      if (emails.length) email = emails[0];
-    }
+    for (const e of extractEmails(html)) emailsSet.add(e);
     if (!whatsapp) {
       const wa = extractWhatsapp(html);
       if (wa) whatsapp = phoneToWhatsapp(wa) || "https://wa.me/" + wa.replace(/\D/g, "");
     }
     if (!instagram) instagram = extractInstagram(html);
 
-    if (email && whatsapp) break; // já temos o essencial
+    // Para de varrer quando já tem WhatsApp e um e-mail que parece pessoal
+    // (com ponto separando nome.sobrenome), que é o alvo de decisor.
+    const temPessoal = [...emailsSet].some((e) => /^[a-z]+\.[a-z]+@/i.test(e));
+    if (whatsapp && temPessoal) break;
   }
 
-  return { email, whatsapp, instagram };
+  const emails = [...emailsSet];
+  return { email: emails[0] || "", emails, whatsapp, instagram };
 }
 
 module.exports = {

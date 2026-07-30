@@ -9,7 +9,7 @@ const { extractFromWebsite, phoneToWhatsapp } = require("./sources/website");
 const { listByCnae, enrichByCnpj } = require("./sources/cnpj");
 const { enrichLinkedin } = require("./sources/linkedin");
 const { createSearcher } = require("./sources/websearch");
-const { bestGuessEmail, domainFromUrl } = require("./sources/email");
+const { bestGuessEmail, domainFromUrl, pickBestEmail } = require("./sources/email");
 const { findEmailBySearch } = require("./sources/emailSearch");
 const { validateEmail, STATUS_LABEL } = require("./sources/emailValidate");
 const wa = require("./sources/whatsapp");
@@ -91,6 +91,7 @@ ipcMain.handle("run", async (event, params) => {
     titles = [],
     onlyWithEmail = false,
     deepEmail = false,
+    preferDecisor = false,
   } = params || {};
 
   let leads = [];
@@ -120,27 +121,32 @@ ipcMain.handle("run", async (event, params) => {
     leads = dedupe(leads);
     progress(`${leads.length} empresas após deduplicar.`);
 
-    // 3) Enriquecimento de e-mail/WhatsApp pelo site
+    // 3) Coleta de e-mails/WhatsApp pelo site. Guardamos TODOS os e-mails
+    //    (lead.emailsFound) para escolher o melhor depois, com o nome do
+    //    decisor em mãos — em vez de fixar o primeiro (que costuma ser lixo).
     if (sources.site) {
-      const comSite = leads.filter((l) => l.website && !l.email);
+      const comSite = leads.filter((l) => l.website);
       let done = 0;
       for (const lead of comSite) {
         const info = await extractFromWebsite(lead.website);
-        if (info.email) lead.email = info.email;
+        lead.emailsFound = info.emails || [];
         if (info.whatsapp) lead.whatsapp = info.whatsapp;
         if (info.instagram) lead.instagram = info.instagram;
         progress(`E-mails: ${++done}/${comSite.length}…`);
       }
     }
 
-    // 4) Enriquecimento por CNPJ (BrasilAPI) para quem já tem CNPJ
+    // 4) Enriquecimento por CNPJ (BrasilAPI) — soma o e-mail aos candidatos.
     if (sources.cnpj) {
-      const comCnpj = leads.filter((l) => l.cnpj && !l.email);
+      const comCnpj = leads.filter((l) => l.cnpj);
       let done = 0;
       for (const lead of comCnpj) {
         const info = await enrichByCnpj(lead.cnpj);
         if (info) {
-          lead.email = lead.email || info.email;
+          if (info.email) {
+            lead.emailsFound = lead.emailsFound || [];
+            if (!lead.emailsFound.includes(info.email)) lead.emailsFound.push(info.email);
+          }
           lead.phone = lead.phone || info.phone;
           lead.address = lead.address || info.address;
         }
@@ -162,14 +168,32 @@ ipcMain.handle("run", async (event, params) => {
       }
     }
 
-    // 6) E-mail provável do decisor (nome do decisor + domínio da empresa)
+    // 6) E-mail provável do decisor (nome do decisor + domínio da empresa).
+    //    Calculado sempre que há decisor + site, para servir de alvo/reserva.
     if (sources.site) {
-      const alvo = leads.filter((l) => l.name && l.website && !l.email);
+      const alvo = leads.filter((l) => l.name && l.website && !l.emailGuess);
       let done = 0;
       for (const lead of alvo) {
         const guess = await bestGuessEmail(lead.name, domainFromUrl(lead.website));
         if (guess) lead.emailGuess = guess;
         progress(`E-mail provável: ${++done}/${alvo.length}…`);
+      }
+    }
+
+    // 6.5) Escolhe o MELHOR e-mail de cada lead, priorizando o do decisor.
+    //      Com "preferDecisor" (modo estrito), descarta caixas genéricas.
+    for (const lead of leads) {
+      const picked = pickBestEmail(lead.emailsFound || [], lead.name, {
+        strictDecisor: preferDecisor,
+      });
+      if (picked.email) {
+        lead.email = picked.email;
+        lead.emailKind = picked.kind;
+      } else if (preferDecisor && lead.emailGuess) {
+        // Sem e-mail de decisor no site, mas temos um provável: promove.
+        lead.email = lead.emailGuess;
+        lead.emailKind = "decisor-provavel";
+        lead.emailGuess = "";
       }
     }
 
