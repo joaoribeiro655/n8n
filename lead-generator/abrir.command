@@ -55,6 +55,11 @@ if [ ! -f "$ELECTRON_BIN" ] || [ ! -d "$ELECTRON_FW" ]; then
 fi
 if [ -d node_modules/electron ]; then
   xattr -cr node_modules/electron 2>/dev/null
+  # Reassina localmente (ad-hoc). Em Macs Apple Silicon o app precisa de
+  # assinatura para rodar; se o Gatekeeper quebrou a original, isto conserta.
+  if command -v codesign >/dev/null 2>&1; then
+    codesign --force --deep --sign - "node_modules/electron/dist/Electron.app" >/dev/null 2>&1
+  fi
 fi
 
 # 4) Abre a janela
