@@ -21,6 +21,23 @@ function onlyDigits(s) {
   return (s || "").replace(/\D/g, "");
 }
 
+/**
+ * Escolhe o sócio que provavelmente é o decisor a partir do QSA da Receita.
+ * Prioriza quem é administrador/diretor/presidente; senão, o primeiro sócio.
+ */
+function pickDecisorFromQsa(qsa) {
+  const partners = (Array.isArray(qsa) ? qsa : [])
+    .map((s) => ({
+      name: (s.nome_socio || s.nome || "").trim(),
+      role: (s.qualificacao_socio || s.qual || "").trim(),
+    }))
+    .filter((p) => p.name);
+  if (!partners.length) return { name: "", role: "", partners };
+  const chefe =
+    partners.find((p) => /administrador|presidente|diretor|titular/i.test(p.role)) || partners[0];
+  return { name: chefe.name, role: chefe.role, partners };
+}
+
 function mapCasaItem(item, city) {
   const phone = item.ddd_telefone_1 || item.telefone || "";
   return {
@@ -101,6 +118,7 @@ async function enrichByCnpj(cnpj) {
     if (!res.ok) return null;
     const d = await res.json();
     const ddd = d.ddd_telefone_1 || "";
+    const decisor = pickDecisorFromQsa(d.qsa);
     return {
       company: d.nome_fantasia || d.razao_social || "",
       category: d.cnae_fiscal_descricao || "",
@@ -109,10 +127,13 @@ async function enrichByCnpj(cnpj) {
       address: [d.logradouro, d.numero, d.bairro, d.municipio, d.uf].filter(Boolean).join(", "),
       city: d.municipio || "",
       cnpj: digits,
+      decisor: decisor.name, // nome do sócio/administrador (Receita)
+      decisorRole: decisor.role,
+      partners: decisor.partners,
     };
   } catch {
     return null;
   }
 }
 
-module.exports = { listByCnae, enrichByCnpj, onlyDigits };
+module.exports = { listByCnae, enrichByCnpj, onlyDigits, pickDecisorFromQsa };

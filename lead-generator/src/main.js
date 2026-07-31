@@ -149,6 +149,12 @@ ipcMain.handle("run", async (event, params) => {
           }
           lead.phone = lead.phone || info.phone;
           lead.address = lead.address || info.address;
+          // Nome do dono/sócio pela Receita → alvo do e-mail de decisor.
+          if (info.decisor && !lead.name) {
+            lead.name = info.decisor;
+            lead.decisorTitle = lead.decisorTitle || info.decisorRole || "Sócio/Administrador";
+            lead.decisorSource = "Receita (QSA)";
+          }
         }
         progress(`CNPJ: ${++done}/${comCnpj.length}…`);
       }
